@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Configuration status="INFO">
+	<Properties>
+		<Property name="filename.prefix">logs/current/server</Property>
+		<Property name="filename.suffix">.log</Property>
+		<property name="pattern">%-5p %d [%c{1}] %X{ident}%m%n</property>
+	</Properties>
+
+	<Appenders>
+		<Console name="ConsoleAppender" target="SYSTEM_OUT">
+			<PatternLayout pattern="${pattern}" />
+		</Console>
+		<RollingFile name="FileAppender.dev" immediateFlush="false"
+			fileName="${filename.prefix}-dev${filename.suffix}" filePattern="${filename.prefix}-dev.%d{yyyy-MM-dd}.%i${filename.suffix}">
+			<PatternLayout pattern="${pattern}" />
+			<Policies>
+				<TimeBasedTriggeringPolicy />
+				<SizeBasedTriggeringPolicy size="20 MB" />
+			</Policies>
+			<DefaultRolloverStrategy max="10" />
+		</RollingFile>
+		<Async name="FileAppender.dev.async">
+			<AppenderRef ref="FileAppender.dev" />
+		</Async>
+		<RollingFile name="FileAppender.FixExecutionLogger"
+			immediateFlush="false"
+			fileName="${filename.prefix}-FixExecutionLogger${filename.suffix}"
+			filePattern="${filename.prefix}-FixExecutionLogger.%d{yyyy-MM-dd}.%i${filename.suffix}">
+			<PatternLayout pattern="%m%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+			</Policies>
+		</RollingFile>
+		<Async name="FileAppender.FixExecutionLogger.async">
+			<AppenderRef ref="FileAppender.FixExecutionLogger" />
+		</Async>
+		<RollingFile name="FileAppender.FixMarketLogger"
+			immediateFlush="false"
+			fileName="MarketDataLogs/server-FixMarketLogger${filename.suffix}"
+			filePattern="MarketDataLogs/server-FixMarketLogger.%d{yyyy-MM-dd}.%i${filename.suffix}">
+			<PatternLayout pattern="%m%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+			</Policies>
+		</RollingFile>
+		<Async name="FileAppender.FixMarketLogger.async">
+			<AppenderRef ref="FileAppender.FixMarketLogger" />
+		</Async>
+		<RollingFile name="FileAppender.FixEventLogger"
+			immediateFlush="false" fileName="${filename.prefix}-FixEventLogger${filename.suffix}"
+			filePattern="${filename.prefix}-FixEventLogger.%d{yyyy-MM-dd}.%i${filename.suffix}">
+			<PatternLayout pattern="${pattern}" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+			</Policies>
+		</RollingFile>
+		<Async name="FileAppender.FixEventLogger.async">
+			<AppenderRef ref="FileAppender.FixEventLogger" />
+		</Async>
+		<RollingFile name="FileAppender.FixMarketOrderLogger"
+			immediateFlush="false"
+			fileName="${filename.prefix}-FixMarketOrderLogger${filename.suffix}"
+			filePattern="${filename.prefix}-FixMarketOrderLogger.%d{yyyy-MM-dd}.%i${filename.suffix}">
+			<PatternLayout pattern="%m%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+			</Policies>
+		</RollingFile>
+		<Async name="FileAppender.FixMarketOrderLogger.async">
+			<AppenderRef ref="FileAppender.FixMarketOrderLogger" />
+		</Async>
+
+		<!-- Logger for Reuters Adapter START -->
+		<RollingFile name="FileAppender.ReutersAppLogger"
+			immediateFlush="false"
+			fileName="${filename.prefix}-ReutersAppLogger${filename.suffix}"
+			filePattern="${filename.prefix}-ReutersAppLogger.%d{yyyy-MM-dd}.%i${filename.suffix}">
+			<PatternLayout pattern="${pattern}" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+			</Policies>
+		</RollingFile>
+		<Async name="FileAppender.ReutersAppLogger.async">
+			<AppenderRef ref="FileAppender.ReutersAppLogger" />
+		</Async>
+		<RollingFile name="FileAppender.ReutersMsgLogger"
+			immediateFlush="false"
+			fileName="${filename.prefix}-ReutersMsgLogger${filename.suffix}"
+			filePattern="${filename.prefix}-ReutersMsgLogger.%d{yyyy-MM-dd}.%i${filename.suffix}">
+			<PatternLayout pattern="${pattern}" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+			</Policies>
+		</RollingFile>
+		<Async name="FileAppender.ReutersMsgLogger.async">
+			<AppenderRef ref="FileAppender.ReutersMsgLogger" />
+		</Async>
+		<!-- Logger for Reuters Adapter END -->
+
+		<!-- Logger for ROE Changes START -->
+		<RollingFile name="FileAppender.FIXROELogger"
+			immediateFlush="false" fileName="${filename.prefix}-FIXROELogger${filename.suffix}"
+			filePattern="${filename.prefix}-FIXROELogger.%d{yyyy-MM-dd}.%i${filename.suffix}">
+			<PatternLayout pattern="${pattern}" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+			</Policies>
+		</RollingFile>
+		<Async name="FileAppender.FIXROELogger.async">
+			<AppenderRef ref="FileAppender.FIXROELogger" />
+		</Async>
+		<RollingFile name="FileAppender.FIXROEHeatBandMsgs"
+			immediateFlush="false"
+			fileName="${filename.prefix}-FIXROEHeatBandMsgs${filename.suffix}"
+			filePattern="${filename.prefix}-FIXROEHeatBandMsgs.%d{yyyy-MM-dd}.%i${filename.suffix}">
+			<PatternLayout pattern="${pattern}" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+			</Policies>
+		</RollingFile>
+		<Async name="FileAppender.FIXROEHeatBandMsgs.async">
+			<AppenderRef ref="FileAppender.FIXROEHeatBandMsgs" />
+		</Async>
+		<RollingFile name="FileAppender.FIXROEOrdMsgs"
+			immediateFlush="false" fileName="${filename.prefix}-FIXROEOrdMsgs${filename.suffix}"
+			filePattern="${filename.prefix}-FIXROEOrdMsgs.%d{yyyy-MM-dd}.%i${filename.suffix}">
+			<PatternLayout pattern="${pattern}" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+			</Policies>
+		</RollingFile>
+		<Async name="FileAppender.FIXROEOrdMsgs.async">
+			<AppenderRef ref="FileAppender.FIXROEOrdMsgs" />
+		</Async>
+		<!-- Logger for ROE Changes END -->
+
+	</Appenders>
+	<Loggers>
+		<Logger name="FixEventLogger" level="debug" additivity="false"
+			includeLocation="true">
+			<AppenderRef ref="FileAppender.FixEventLogger.async" />
+		</Logger>
+		<Logger name="FixExecutionLogger" level="debug" additivity="false"
+			includeLocation="true">
+			<AppenderRef ref="FileAppender.FixExecutionLogger.async" />
+		</Logger>
+		<Logger name="FixMarketLogger" level="debug" additivity="false"
+			includeLocation="true">
+			<AppenderRef ref="FileAppender.FixMarketLogger.async" />
+		</Logger>
+		<Logger name="FixMarketOrderLogger" level="debug" additivity="false"
+			includeLocation="true">
+			<AppenderRef ref="FileAppender.FixMarketOrderLogger.async" />
+		</Logger>
+
+		<Logger name="ReutersAppLogger" level="debug" additivity="false"
+			includeLocation="true">
+			<AppenderRef ref="FileAppender.ReutersAppLogger.async" />
+		</Logger>
+		<Logger name="ReutersMsgLogger" level="debug" additivity="false"
+			includeLocation="true">
+			<AppenderRef ref="FileAppender.ReutersMsgLogger.async" />
+		</Logger>
+		<Logger name="com.reuters.rfa" level="debug" additivity="false"
+			includeLocation="true">
+			<AppenderRef ref="FileAppender.ReutersAppLogger.async" />
+		</Logger>
+
+		<Logger name="FIXROELogger" level="debug" additivity="false"
+			includeLocation="true">
+			<AppenderRef ref="FileAppender.FIXROELogger.async" />
+		</Logger>
+		<Logger name="FIXROEHeatBandMsgs" level="debug" additivity="false"
+			includeLocation="true">
+			<AppenderRef ref="FileAppender.FIXROEHeatBandMsgs.async" />
+		</Logger>
+		<Logger name="FIXROEOrdMsgs" level="debug" additivity="false"
+			includeLocation="true">
+			<AppenderRef ref="FileAppender.FIXROEOrdMsgs.async" />
+		</Logger>
+
+		<Logger name="com.tts" level="debug" additivity="false"
+			includeLocation="true">
+			<AppenderRef ref="FileAppender.dev.async" />
+		</Logger>
+		<Root level="warn" includeLocation="false">
+			<AppenderRef ref="ConsoleAppender" />
+		</Root>
+	</Loggers>
+</Configuration>

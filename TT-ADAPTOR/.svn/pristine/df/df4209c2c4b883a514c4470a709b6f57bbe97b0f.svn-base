@@ -1,0 +1,76 @@
+[default]
+FileStorePath=sessionLogs
+FileStoreMaxCachedMsgs=1000
+FileLogPath=logs
+ConnectionType=acceptor
+HeartBtInt=30
+UseDataDictionary=Y
+PersistMessages=N
+ValidateUserDefinedFields=N
+CheckCompID=N
+SocketReuseAddress=Y
+
+[session] 
+SenderCompID=BANK_ESP_PRICES
+TargetCompID=TTS_ESP_PRICES
+BeginString=FIXT.1.1 
+DefaultApplVerID=FIX.5.0
+SocketAcceptPort=9881
+ResetOnDisconnect=N
+ResetOnLogon=Y
+ResetOnLogout=N
+StartTime=00:00:00 US/Eastern
+EndTime=00:00:00 US/Eastern
+AppDataDictionary=app-resources/TTFIX50.xml
+
+[session] 
+SenderCompID=BANK_ESP_ORD
+TargetCompID=TTS_ESP_ORD
+BeginString=FIXT.1.1 
+DefaultApplVerID=FIX.5.0
+SocketAcceptPort=9881
+ResetOnDisconnect=N
+ResetOnLogon=Y
+ResetOnLogout=N
+StartTime=00:00:00 US/Eastern
+EndTime=00:00:00 US/Eastern
+AppDataDictionary=app-resources/TTFIX50.xml
+
+[session] 
+SenderCompID=BANK_RFS
+TargetCompID=TTS_RFS_TRADES
+BeginString=FIXT.1.1 
+DefaultApplVerID=FIX.5.0
+SocketAcceptPort=9881
+AppDataDictionary=app-resources/TTFIX50.xml
+ResetOnDisconnect=N
+ResetOnLogon=Y
+ResetOnLogout=N
+StartTime=00:00:00 US/Eastern
+EndTime=00:00:00 US/Eastern
+
+[session] 
+SenderCompID=SIM-BANK2_ESP_PRICES
+TargetCompID=TTS_ESP_PRICES
+BeginString=FIXT.1.1 
+DefaultApplVerID=FIX.5.0
+SocketAcceptPort=9881
+ResetOnDisconnect=N
+ResetOnLogon=Y
+ResetOnLogout=N
+StartTime=00:00:00 US/Eastern
+EndTime=00:00:00 US/Eastern
+AppDataDictionary=app-resources/TTFIX50.xml
+
+[session] 
+SenderCompID=SIM-BANK2_ESP_ORD
+TargetCompID=TTS_ESP_ORD
+BeginString=FIXT.1.1 
+DefaultApplVerID=FIX.5.0
+SocketAcceptPort=9881
+ResetOnDisconnect=N
+ResetOnLogon=Y
+ResetOnLogout=N
+StartTime=00:00:00 US/Eastern
+EndTime=00:00:00 US/Eastern
+AppDataDictionary=app-resources/TTFIX50.xml

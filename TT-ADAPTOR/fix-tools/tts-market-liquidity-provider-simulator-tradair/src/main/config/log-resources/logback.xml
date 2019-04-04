@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+	<property scope="context" name="LOG_HOME" value="logs/current" />
+
+
+	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+		<encoder>
+			<pattern>%d %-5level | %thread | %logger{30} - %msg%n%ex</pattern>
+		</encoder>
+	</appender>
+
+	<appender name="APPENDER-LIB" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${LOG_HOME}/server-lib.${APP_NAME}.log</file>
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<pattern>%d %-5level | %thread | %logger{30} - %msg%n%ex</pattern>
+		</encoder>
+
+		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_HOME}/server-lib.${APP_NAME}.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+			<maxFileSize>2GB</maxFileSize>
+			<maxHistory>10</maxHistory>
+			<totalSizeCap>15GB</totalSizeCap>
+		</rollingPolicy>
+	</appender>
+	<appender name="APPENDER-APP" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${LOG_HOME}/server.${APP_NAME}.log</file>
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<pattern>%d %-5level | %thread | %logger{30} - %msg%n%ex</pattern>
+		</encoder>
+
+		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_HOME}/server.${APP_NAME}.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+			<maxFileSize>2GB</maxFileSize>
+			<maxHistory>10</maxHistory>
+			<totalSizeCap>15GB</totalSizeCap>
+		</rollingPolicy>
+	</appender>
+
+	<appender name="APPENDER-SOLACE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${LOG_HOME}/server-solace.${APP_NAME}.log</file>
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<pattern>%d %-5level | %thread | %logger{30} - %msg%n%ex</pattern>
+		</encoder>
+
+		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_HOME}/server-solace.${APP_NAME}.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+			<maxFileSize>2GB</maxFileSize>
+			<maxHistory>10</maxHistory>
+			<totalSizeCap>15GB</totalSizeCap>
+		</rollingPolicy>
+	</appender>
+	
+	<appender name="APPENDER-FIXEXECUTION" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${LOG_HOME}/server-FixExecution.${APP_NAME}.log</file>
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<pattern>%d %-5level | %thread | %logger{30} - %msg%n%ex</pattern>
+		</encoder>
+
+		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_HOME}/server-FixExecution.${APP_NAME}.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+			<maxFileSize>2GB</maxFileSize>
+			<maxHistory>10</maxHistory>
+			<totalSizeCap>15GB</totalSizeCap>
+		</rollingPolicy>
+	</appender>
+	
+	<appender name="APPENDER-FIXMARKET" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${LOG_HOME}/server-FixMarket.${APP_NAME}.log</file>
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<pattern>%d %-5level | %thread | %logger{30} - %msg%n%ex</pattern>
+		</encoder>
+
+		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_HOME}/server-FixMarket.${APP_NAME}.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+			<maxFileSize>2GB</maxFileSize>
+			<maxHistory>10</maxHistory>
+			<totalSizeCap>15GB</totalSizeCap>
+		</rollingPolicy>
+	</appender>
+	
+	<appender name="APPENDER-FIXEVENT" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${LOG_HOME}/server-FixEvent.${APP_NAME}.log</file>
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<pattern>%d %-5level | %thread | %logger{30} - %msg%n%ex</pattern>
+		</encoder>
+
+		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_HOME}/server-FixEvent.${APP_NAME}.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+			<maxFileSize>2GB</maxFileSize>
+			<maxHistory>10</maxHistory>
+			<totalSizeCap>15GB</totalSizeCap>
+		</rollingPolicy>
+	</appender>
+	
+	
+	<logger name="com.tts" level="DEBUG" additivity="false">
+		<appender-ref ref="APPENDER-APP" />
+	</logger>
+	<logger name="com.solacesystems" level="INFO" additivity="false">
+		<appender-ref ref="APPENDER-SOLACE" />
+	</logger>
+	<logger name="FixExecutionLogger" level="DEBUG" additivity="false">
+		<appender-ref ref="APPENDER-FIXEXECUTION" />
+	</logger>
+	<logger name="FixMarketLogger" level="DEBUG" additivity="false">
+		<appender-ref ref="APPENDER-FIXMARKET" />
+	</logger>
+	<logger name="FixEventLogger" level="DEBUG" additivity="false">
+		<appender-ref ref="APPENDER-FIXEVENT" />
+	</logger>
+		
+	<root level="INFO">
+		<appender-ref ref="APPENDER-LIB" />
+	</root>
+</configuration>

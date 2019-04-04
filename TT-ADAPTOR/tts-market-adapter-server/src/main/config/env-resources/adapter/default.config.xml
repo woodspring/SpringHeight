@@ -1,0 +1,33 @@
+<configuration>
+
+	<section name="log">
+		<entry key="config.file" value="/log-resources/log4j2-dev.xml" />
+	</section>
+	
+	<section name="data">
+		<entry key="fc.file" value="/app-resources/fc.csv" />
+	</section>
+		
+	<section name="app">
+		<entry key="config.file" value="env-resources/adapter/spring/app.config.xml" />
+		
+		<!-- socket, jms -->
+		<entry key="protocol" value="socket" />
+		
+		<!-- millisecond -->
+		<entry key="inject.interval" value="500" />
+		
+		<!-- second -->
+		<entry key="delay.interval" value="30" />
+		
+		<!-- second -->
+		<entry key="fullrefresh.interval" value = "500"/>
+		
+		<entry key="config.folder" value="env-resources/adapter/spring/*.xml"/>
+	</section>
+	
+	<section name="monitor">
+		<entry key="latency.report" value="report/adapterManager/latency.report.csv" />
+	</section>
+	
+</configuration>

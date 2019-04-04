@@ -1,0 +1,50 @@
+-dontwarn
+-dontshrink
+-dontoptimize
+-keepdirectories
+-allowaccessmodification
+
+-keepattributes InnerClasses,Signature,*Annotation*,RuntimeVisibleAnnotations,
+				RuntimeInvisibleAnnotations,RuntimeVisibleParameterAnnotations,
+				RuntimeInvisibleParameterAnnotations,AnnotationDefault,EnclosingMethod
+
+-keep class com.tts.**.*Main { 
+	public *; public static *; 
+}
+
+-keep class com.tts.**.config.** { 
+	public *; public static *; 
+}
+
+-keep class com.tts.web.controller.** { 
+	public *; public static *; 
+}
+
+-keep class com.tts.**.*Plugin { *; }
+
+-keep class com.tts.** implements quickfix.Application { *; }
+
+-keep interface com.tts.service.repository.** { *; }
+
+-keep interface com.tts.**.*Spi { *; }
+
+-keepclassmembers class com.tts.** {
+	*** init(); *** destroy(); *** __**;
+}
+
+-keep class com.tts.message.** { *; }
+
+-keepclasseswithmembernames,includedescriptorclasses class com.tts.message.** { *; }
+
+-keep class com.tts.vo.AbstractValueObject { *; }
+
+-keepclasseswithmembernames,includedescriptorclasses class com.tts.vo.AbstractValueObject { *; }
+
+-keep @javax.persistence.* class com.tts.entity.** { *; }
+
+-keepclassmembers class * { @javax.inject.Inject *; }
+
+-keepclassmembers class * implements java.io.Serializable { 
+	static final long serialVersionUID; 
+}
+

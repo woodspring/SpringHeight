@@ -1,0 +1,12 @@
+package com.tts.mde.plugin;
+
+import com.tts.util.plugin.AbstractPlugInManager;
+
+public class MdePluginManager extends AbstractPlugInManager<IMdePlugin> {
+
+	public MdePluginManager() {
+		super(IMdePlugin.class);
+		
+	}
+
+}

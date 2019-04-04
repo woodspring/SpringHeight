@@ -1,0 +1,35 @@
+package com.tts.plugin.adapter.impl.base.app;
+
+import com.tts.fix.support.IMkQfixApp;
+import com.tts.plugin.adapter.api.IFixIntegrationPluginSpi;
+import com.tts.plugin.adapter.api.app.IPublishingApp;
+import com.tts.plugin.adapter.support.ICertifiedPublishingEndpoint;
+import com.tts.plugin.adapter.support.IPublishingEndpoint;
+import com.tts.plugin.adapter.support.ISchedulingWorker;
+import com.tts.plugin.adapter.support.vo.SessionInfo;
+
+public abstract class AbstractPublishingApp extends AbstractMasApp implements IPublishingApp {
+
+	public AbstractPublishingApp(
+			IMkQfixApp qfixApp,
+			ISchedulingWorker worker,
+			SessionInfo sessionInfo, 
+			IPublishingEndpoint iPublishingEndpoint,
+			ICertifiedPublishingEndpoint iCertifiedPublishingEndpoint, 
+			IFixIntegrationPluginSpi IFixIntegrationPluginSpi) {
+		super(	qfixApp, 
+				worker, 
+				sessionInfo, 
+				iPublishingEndpoint,
+				iCertifiedPublishingEndpoint, 
+				IFixIntegrationPluginSpi);
+	}
+
+	@Override
+	public int hashCode() {
+		return getName().hashCode();
+	}
+
+	
+
+}

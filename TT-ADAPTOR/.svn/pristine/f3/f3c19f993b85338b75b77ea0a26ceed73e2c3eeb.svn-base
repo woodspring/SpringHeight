@@ -1,0 +1,389 @@
+package com.tts.mde.controller;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.protobuf.TextFormat;
+import com.tts.entity.session.TradingSession;
+import com.tts.mde.plugin.IMDEmbeddedAdapterFactory;
+import com.tts.mde.plugin.IMdePlugin;
+import com.tts.mde.plugin.MdePluginManager;
+import com.tts.mde.provider.MDProviderStateManager;
+import com.tts.mde.provider.SessionInfoProvider;
+import com.tts.mde.service.IMDEmbeddedAdapter;
+import com.tts.mde.spot.DelaySubscriptionSender;
+import com.tts.mde.spot.GlobalReqIdProvider;
+import com.tts.mde.spot.SpotMarketDataHandler;
+import com.tts.mde.spot.SpotMarketDataReceiver;
+import com.tts.mde.support.ICertifiedPublishingEndpoint;
+import com.tts.mde.support.IFxCalendarBizServiceApi;
+import com.tts.mde.support.IInstrumentDetailProvider;
+import com.tts.mde.support.IMarketDataHandler;
+import com.tts.mde.support.config.Adapter;
+import com.tts.mde.support.config.Adapter.SourceConfig;
+import com.tts.mde.support.config.FwdPtsMarketDataConfig;
+import com.tts.mde.support.config.FwdPtsMarketDataConfig.CurrencyPairConfig;
+import com.tts.mde.support.config.MDSubscription;
+import com.tts.mde.support.config.MDSubscriptions;
+import com.tts.mde.support.config.MarketDataSet;
+import com.tts.mde.support.config.MarketDataSetConfig;
+import com.tts.mde.support.config.MarketDataSetSchedule;
+import com.tts.mde.support.config.SpotMarketDataConfig;
+import com.tts.mde.support.config.SpotMarketDataConfig.CurrencyPairAggConfig;
+import com.tts.mde.support.impl.InjectionWorker;
+import com.tts.mde.support.impl.MdeSchedulingWorkerImpl;
+import com.tts.mde.support.impl.SessionInfoVo;
+import com.tts.mde.vo.SubscriptionWithSourceVo;
+import com.tts.message.TtMessageStruct.TtMsg;
+import com.tts.message.common.service.ITradingSessionAware;
+import com.tts.message.market.MarketMarkerStruct.MMAvailableInstrumentRequest;
+import com.tts.message.market.MarketMarkerStruct.MMAvailableInstrumentResponse;
+import com.tts.message.system.RolloverStruct.RolloverNotification;
+import com.tts.message.system.SystemStatusStruct.ChangeTradingSession;
+import com.tts.message.trade.PostTradeMessage.ExecutionReportInfo;
+import com.tts.message.trade.TradeMessage.Transaction;
+import com.tts.message.util.TtMsgEncoder;
+import com.tts.monitor.agent.MonitorAgentFactory;
+import com.tts.monitor.agent.api.IMonitorAgent;
+import com.tts.monitor.agent.util.MonitorConstant;
+import com.tts.protocol.platform.IMsgListener;
+import com.tts.protocol.platform.IMsgProperties;
+import com.tts.protocol.platform.IMsgReceiver;
+import com.tts.protocol.platform.IMsgReceiverFactory;
+import com.tts.protocol.platform.IMsgSender;
+import com.tts.protocol.platform.IMsgSenderFactory;
+import com.tts.protocol.platform.IMsgSessionInfo;
+import com.tts.protocol.platform.event.IEventMessageTypeConstant;
+import com.tts.protocol.platform.event.IEventMessageTypeConstant.Data;
+import com.tts.protocol.platform.event.IEventMessageTypeConstant.Transactional;
+import com.tts.service.db.TradingSessionManager;
+import com.tts.util.AppContext;
+import com.tts.util.exception.InvalidServiceException;
+
+public class DataFlowController implements ITradingSessionAware, IMsgListener {
+	private static final String EXEC_REPORT_INBOUND_TOPIC = String.format(Transactional.TRAN_INFO_TEMPLATE, "FA", Data.RateType.MARKET);
+
+	private static final Logger logger = LoggerFactory.getLogger(DataFlowController.class);
+	private static final IMonitorAgent monitorAgent = MonitorAgentFactory.getMonitorAgent(logger);
+	
+	private static final String[] CTRL_TOPICS_INTERESTED = new String[] {
+			IEventMessageTypeConstant.REM.CE_TRADING_SESSION,
+			IEventMessageTypeConstant.System.FX_ROLLOVER_EVENT,
+			IEventMessageTypeConstant.MarketMaking.MARKET_ADJUSTMENT_AVAILABLE_INSTRUMENT_REQUEST
+		};
+	
+	private final MdePluginManager mdePluginManager = new MdePluginManager();
+	private final ICertifiedPublishingEndpoint certifiedPublishingEndpoint;
+	private final SessionInfoProvider sessionInfoProvider;
+	private final ArrayList<IMsgReceiver> ctrlMsgReceivers = new ArrayList<>();
+	private final IMsgSender ctrlMsgSender;
+	private final IInstrumentDetailProvider instrumentDetailProvider;
+	private final SpotMarketDataReceiver spotMarketDataReceiver = new SpotMarketDataReceiver();
+	private final InjectionWorker injectionWorker = new InjectionWorker();
+	private final IFxCalendarBizServiceApi fxCalendarBizService;
+	private final ScheduledExecutorService executorService;
+	private final MdeSchedulingWorkerImpl scheduleWorker;
+	private final SessionInfoVo sessionInfo = new SessionInfoVo();
+	private final GlobalReqIdProvider globalReqIdProvider;
+	private final DelaySubscriptionSender delaySubscriptionSender;
+	private final MDProviderStateManager mdProviderStateManager;
+
+	private volatile Map<String, SpotMarketDataHandler> currentSpotMarketDataHandlerMap = null;
+	private volatile IMsgReceiver  hedgingRequestReceiver = null;
+	private volatile List<IMarketDataHandler> fwdMdHandlers;
+
+	public DataFlowController() {
+		SessionInfoProvider sessionInfoProvider = AppContext.getContext().getBean(SessionInfoProvider.class);
+		IFxCalendarBizServiceApi fxCalendarBizServiceApi = AppContext.getContext().getBean(IFxCalendarBizServiceApi.class);
+		IMsgSenderFactory msgSenderFactory = AppContext.getContext().getBean(IMsgSenderFactory.class);
+		IInstrumentDetailProvider instrumentDetailProvider = AppContext.getContext().getBean(IInstrumentDetailProvider.class);
+
+		IMsgSender ctrlMsgSender = msgSenderFactory.getMsgSender(false, false, false);
+		ctrlMsgSender.init();
+		
+		this.executorService = Executors.newScheduledThreadPool(10);
+		this.scheduleWorker = new MdeSchedulingWorkerImpl(this.executorService);
+		this.instrumentDetailProvider = instrumentDetailProvider;
+		this.fxCalendarBizService =  fxCalendarBizServiceApi;
+		this.ctrlMsgSender = ctrlMsgSender;		
+		this.sessionInfoProvider = sessionInfoProvider;
+		this.certifiedPublishingEndpoint = AppContext.getContext().getBean(ICertifiedPublishingEndpoint.class);
+		this.globalReqIdProvider = AppContext.getContext().getBean(GlobalReqIdProvider.class);
+		this.delaySubscriptionSender = AppContext.getContext().getBean(DelaySubscriptionSender.class);
+		this.mdProviderStateManager = AppContext.getContext().getBean(MDProviderStateManager.class);
+	}
+	
+	@Override
+	public void switchTradingSession(String newTradingSessionName) throws InvalidServiceException {
+		if ( sessionInfo != null ) {
+			cleanup();
+		}
+		
+		try {
+			Thread.sleep(5000L);
+		} catch (InterruptedException e) {
+
+		}
+		
+		List<String> skewingCcypair = new ArrayList<String>();
+		TradingSession tradingSession= TradingSessionManager.getInstance().getSessionByName(newTradingSessionName);
+		sessionInfo.setTradingSessionId(tradingSession.getPk());
+		String activeMarketDataSetNm = null;
+		MarketDataSet activeSet = null;
+		MarketDataSetConfig config = sessionInfoProvider.getOrReloadMarketDataSetConfig();
+		List<MarketDataSetSchedule> schedules = config.getMarketDataSetSchedules();
+		if ( schedules != null ) {
+			for (MarketDataSetSchedule schedule: schedules ) {
+				if ( schedule.getTradingSession() != null ) {
+					for ( String tradingSesion : schedule.getTradingSession().getTradingSession()) {
+						if ( newTradingSessionName.equals(tradingSesion)) {
+							activeMarketDataSetNm = schedule.getMarketDataSetNm();
+							break;
+						}
+					}
+				}
+			}
+		}
+		List<MarketDataSet> sets = config.getMarketDataSets();
+		for ( MarketDataSet set : sets) {
+			if ( activeMarketDataSetNm != null && activeMarketDataSetNm.equals(set.getMarketDataSetNm()) ) {
+				activeSet = set;
+				break;
+			}
+		}
+		
+		if ( activeSet != null ) {
+			boolean isInternalLqyEnabled = false;
+			List<IMdePlugin> availablePlugins = mdePluginManager.getPluginList();
+			List<Adapter> availableAdapters = activeSet.getAdapters().getAdapter();
+			Map<String, Adapter> sourceAdapterMap = new HashMap<>();
+			Map<String, IMDEmbeddedAdapterFactory> adaptorFactories = new HashMap<>(1); 
+			for ( Adapter adapter : availableAdapters) {
+				if (adapter.isIsEmbedded() != null && adapter.isIsEmbedded() == Boolean.TRUE) {
+					for ( IMdePlugin p: availablePlugins ) {
+						if ( p.getMDEmbeddedAdapterNames().contains(adapter.getAdapterNm())) {
+							adaptorFactories.put(adapter.getAdapterNm(), p.getMDEmbeddedAdapterFactory(adapter));
+						}
+					}
+				}
+				for ( SourceConfig sc : adapter.getSourceConfig() ) {
+					sourceAdapterMap.put(sc.getSourceNm(), adapter);
+				}
+				if ( "INTERNAL".equals( adapter.getAdapterNm()) ) {
+					isInternalLqyEnabled = true;
+				}
+			}
+			mdProviderStateManager.setAdapters(availableAdapters);
+			Map<String,List< SubscriptionWithSourceVo>>  embeddedAdapterSub = new HashMap<>(1);
+			FwdPtsMarketDataConfig fwdcMdConfig = activeSet.getFwdptsMarketDataConfig();
+			HashMap<String, List< SubscriptionWithSourceVo>> fwdcSourceConfig = new HashMap<>(fwdcMdConfig.getCurrencyPairConfig().size());
+			for ( CurrencyPairConfig cfg : fwdcMdConfig.getCurrencyPairConfig() ) {
+				MDSubscriptions subscriptions = cfg.getSubscriptions();
+				List< SubscriptionWithSourceVo> subscriptionsAndSources = new ArrayList<SubscriptionWithSourceVo>(subscriptions.getSubscription().size());
+				for ( MDSubscription subscription : subscriptions.getSubscription() ) {
+					List<String> sourceList = subscription.getSourceNm();
+					List<SourceConfig> filteredSources = new ArrayList<>(1);
+					if ( sourceList.size() > 0 ) {
+						Adapter adapter = sourceAdapterMap.get(sourceList.get(0));
+						for ( SourceConfig sc : adapter.getSourceConfig()) {
+							if ( sourceList.contains(sc.getSourceNm())) {
+								filteredSources.add(sc);
+							}
+						}
+						SubscriptionWithSourceVo subscriptionAndSource = new SubscriptionWithSourceVo(cfg.getCurrencyPair(), subscription, filteredSources, adapter);
+						subscriptionsAndSources.add(subscriptionAndSource);
+						if ( adapter.isIsEmbedded() != null && adapter.isIsEmbedded() == Boolean.TRUE) {
+							List<SubscriptionWithSourceVo> adapterSub = embeddedAdapterSub.get(adapter.getAdapterNm());
+							if (adapterSub  == null ) {
+								adapterSub = new ArrayList<>();
+								embeddedAdapterSub.put(adapter.getAdapterNm(), adapterSub);
+							}
+							adapterSub.add(subscriptionAndSource);
+						}
+					}
+				}
+				fwdcSourceConfig.put(cfg.getCurrencyPair(), subscriptionsAndSources);
+			}
+			
+			List<IMarketDataHandler> fwdMdHandlers = new ArrayList<>();
+			for (Entry<String, List<SubscriptionWithSourceVo>> adapterSubscriptions : embeddedAdapterSub.entrySet()) {
+				IMDEmbeddedAdapterFactory factory = adaptorFactories.get(adapterSubscriptions.getKey());
+				factory.setRunnableWorker(this.scheduleWorker);
+				factory.setSessionInfo(this.sessionInfo);
+				IMDEmbeddedAdapter adapter = factory.getMDEmbeddedAdapterByAdapterSourceName(adapterSubscriptions.getKey() );
+				
+				adapter.init();
+				IMarketDataHandler mdHandler = adapter.addSubscriptions(adapterSubscriptions.getValue());
+				fwdMdHandlers.add(mdHandler);
+			}
+			
+			SpotMarketDataConfig spotMdConfig = activeSet.getSpotMarketDataConfig();
+			HashMap<String, List< SubscriptionWithSourceVo>> spotSourceConfig = new HashMap<>(spotMdConfig.getCurrencyPairAggConfig().size());
+			for ( CurrencyPairAggConfig cfg : spotMdConfig.getCurrencyPairAggConfig() ) {
+				MDSubscriptions subscriptions = cfg.getSubscriptions();
+				List< SubscriptionWithSourceVo> subscriptionsAndSources = new ArrayList<SubscriptionWithSourceVo>(subscriptions.getSubscription().size());
+				for ( MDSubscription subscription : subscriptions.getSubscription() ) {
+					List<String> sourceList = subscription.getSourceNm();
+					List<SourceConfig> filteredSources = new ArrayList<>(1);
+					if ( sourceList.size() > 0 ) {
+						Adapter adapter = sourceAdapterMap.get(sourceList.get(0));
+						for ( SourceConfig sc : adapter.getSourceConfig()) {
+							if ( sourceList.contains(sc.getSourceNm())) {
+								filteredSources.add(sc);
+							}
+						}
+						subscriptionsAndSources.add(new SubscriptionWithSourceVo(cfg.getCurrencyPair(), subscription, filteredSources, adapter));
+						
+						if ( isInternalLqyEnabled && "INTERNAL".equals(adapter.getAdapterNm())) {
+							skewingCcypair.add(cfg.getCurrencyPair());
+						}
+					}
+				}
+				spotSourceConfig.put(cfg.getCurrencyPair(), subscriptionsAndSources);
+			}
+			
+			HashMap<String, SpotMarketDataHandler> spotMarketDataHandlerMap = new HashMap<>();
+			for ( CurrencyPairAggConfig cfg : spotMdConfig.getCurrencyPairAggConfig()) {
+				SpotMarketDataHandler h = new SpotMarketDataHandler(
+						cfg,
+						spotSourceConfig.get(cfg.getCurrencyPair()),
+						this.ctrlMsgSender, 
+						this.fxCalendarBizService, 
+						this.instrumentDetailProvider, 
+						this.sessionInfo, 
+						this.globalReqIdProvider,
+						this.delaySubscriptionSender,
+						this.mdProviderStateManager);
+				spotMarketDataHandlerMap.put(cfg.getCurrencyPair(), h);
+				h.init();
+			}
+			
+			this.sessionInfo.setCurrencyPairWithInternalLqy(skewingCcypair);
+				
+			ArrayList<IMarketDataHandler> marketDataHandlers = new ArrayList<IMarketDataHandler>();
+			marketDataHandlers.addAll(fwdMdHandlers);
+			marketDataHandlers.addAll(spotMarketDataHandlerMap.values());
+			
+			this.fwdMdHandlers = Collections.unmodifiableList(fwdMdHandlers);
+			this.injectionWorker.setMarketDataHandlers(marketDataHandlers);
+			this.spotMarketDataReceiver.setListenerMap(spotMarketDataHandlerMap);		
+			this.currentSpotMarketDataHandlerMap  = spotMarketDataHandlerMap;
+		}
+	}
+	
+	private void cleanup() {
+		this.injectionWorker.setMarketDataHandlers(Collections.emptyList());
+
+		if ( this.currentSpotMarketDataHandlerMap != null ) {
+			ArrayList<SpotMarketDataHandler> spotMarketDataHandlers = new ArrayList<SpotMarketDataHandler>(currentSpotMarketDataHandlerMap.values());
+			for ( SpotMarketDataHandler h : spotMarketDataHandlers) {
+				h.destroy();
+			}
+			this.currentSpotMarketDataHandlerMap = null;
+		}
+		if ( fwdMdHandlers != null ) {
+			for (IMarketDataHandler h : fwdMdHandlers ) {
+				h.destroy();
+			}
+		}
+		this.sessionInfo.setCurrencyPairWithInternalLqy(null);
+	}
+
+	public void init() {
+		IMsgReceiverFactory msgReceiverFactory = AppContext.getContext().getBean(IMsgReceiverFactory.class);
+
+		for ( String topic: CTRL_TOPICS_INTERESTED ) {
+			IMsgReceiver  msgReceiver = msgReceiverFactory.getMsgReceiver(false, false);
+			msgReceiver.setListener(this);
+			msgReceiver.setTopic(topic);
+			msgReceiver.init();
+			this.ctrlMsgReceivers.add(msgReceiver);
+		}
+		
+		switchTradingSession(TradingSessionManager.getInstance().getActiveSessionNm());
+		this.injectionWorker.start();
+		
+		IMsgReceiver  hedgingRequestReceiver = msgReceiverFactory.getMsgReceiver(false, false, true);
+		hedgingRequestReceiver.setListener(this);
+		hedgingRequestReceiver.setTopic(IEventMessageTypeConstant.Market.TOPIC_TRADE_ALL);
+		hedgingRequestReceiver.init();
+		this.hedgingRequestReceiver = hedgingRequestReceiver;
+	}
+	
+	public void destroy() {
+		this.injectionWorker.stop();
+		if ( this.spotMarketDataReceiver != null ) {
+			this.spotMarketDataReceiver.destroy();
+		}
+		if ( this.hedgingRequestReceiver != null ) {
+			this.hedgingRequestReceiver.destroy();
+		}
+		if (this.ctrlMsgReceivers.size() > 0  ) {
+			for ( IMsgReceiver receiver: ctrlMsgReceivers ) {
+				receiver.destroy();
+			}
+			this.ctrlMsgReceivers.clear();
+		}
+		this.executorService.shutdownNow();
+	}
+
+	@Override
+	public void onMessage(TtMsg message, IMsgSessionInfo arg1, IMsgProperties msgProperties) {
+		String func = "EventController.onEvent".intern();
+		String eventType = msgProperties.getSendTopic();
+		
+		try {
+			monitorAgent.debug(String.format("OnEvent(SYSTEM): %s", eventType));
+			
+			if (IEventMessageTypeConstant.REM.CE_TRADING_SESSION.equals(eventType)) {
+				ChangeTradingSession tradingSession = ChangeTradingSession.parseFrom(message.getParameters());
+				if (tradingSession.hasChangeTo()  ) {
+					String toTradingSession = tradingSession.getChangeTo().getTradingSessionNm();
+					switchTradingSession(toTradingSession);
+				}
+			} else if (IEventMessageTypeConstant.System.FX_ROLLOVER_EVENT.equals(eventType)) {
+				RolloverNotification rolloverNotification = RolloverNotification.parseFrom(message.getParameters());
+				fxCalendarBizService.onRolloverEvent(rolloverNotification);
+			} else if (EXEC_REPORT_INBOUND_TOPIC.equals(eventType)) {
+				ExecutionReportInfo executionReportInfo = ExecutionReportInfo.parseFrom(message.getParameters());
+				String symbol = executionReportInfo.getSymbol();
+				this.certifiedPublishingEndpoint.publish(IEventMessageTypeConstant.AutoCover.TRADE_STATUS_FROM_MR_EVENT, executionReportInfo);
+
+				SpotMarketDataHandler h = currentSpotMarketDataHandlerMap.get(symbol);
+				if ( h != null) {
+					h.onHedgingResponse(executionReportInfo);
+				}
+				
+			} else if (eventType.endsWith("TRANINFO.MR")){
+				Transaction transactionMessage = Transaction.parseFrom(message.getParameters());
+				String symbol = transactionMessage.getSymbol();
+				SpotMarketDataHandler h = currentSpotMarketDataHandlerMap.get(symbol);
+				h.onHedgingRequest(transactionMessage);
+			} else if (IEventMessageTypeConstant.MarketMaking.MARKET_ADJUSTMENT_AVAILABLE_INSTRUMENT_REQUEST.equals(eventType)) {
+				MMAvailableInstrumentRequest req = MMAvailableInstrumentRequest.parseFrom(message.getParameters());
+				MMAvailableInstrumentResponse.Builder respBuilder = MMAvailableInstrumentResponse.newBuilder();
+				if ( this.sessionInfo.getCurrencyPairWithInternalLqy() != null) {
+					respBuilder.addAllSymbol(this.sessionInfo.getCurrencyPairWithInternalLqy());
+				}
+				respBuilder.setTradingSessionNm(req.getTradingSessionNm());
+				MMAvailableInstrumentResponse resp = respBuilder.build();
+				TtMsg ttMsg = TtMsgEncoder.encode(resp);
+				arg1.getReplySender().sendReply(ttMsg, msgProperties);
+			} else {
+				logger.debug("UnknownMessage : " + TextFormat.shortDebugString(message) + " from event, " + eventType);
+			}
+			
+		} catch (Exception ex) {
+			monitorAgent.logError(func, eventType, MonitorConstant.ERROR_UNKNOWN_SYSTEM_ERR, ex.getMessage(), ex);
+		}
+	}
+	
+}

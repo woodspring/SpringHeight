@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>com.tts</groupId>
+		<artifactId>TT-ADAPTER</artifactId>
+		<version>5.15.2-SNAPSHOT</version>
+	</parent>
+
+	<artifactId>tts-reuters-adapter</artifactId>
+	<name>tts-reuters-adapter</name>
+
+	<properties>
+	</properties>
+
+	<dependencies>
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>tts-fix-integration-api</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>tts-utils</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>tts-mas-plugin-application-api</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.tts</groupId>
+			<artifactId>tts-utilityservices</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.reuters</groupId>
+			<artifactId>rfa</artifactId>
+			<version>7.2</version>
+		</dependency>
+	</dependencies>
+</project>

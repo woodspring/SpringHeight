@@ -1,0 +1,4 @@
+dataSource.jdbc.url=jdbc:mysql://192.168.11.123:3306/TICKTTSDEV2?autoReconnect=true&autoCommit=false
+dataSource.user=ticktradettsdev2
+dataSource.pass=ticktrade
+

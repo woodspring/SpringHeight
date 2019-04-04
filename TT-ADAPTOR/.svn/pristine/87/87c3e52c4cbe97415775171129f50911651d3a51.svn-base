@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Configuration status="WARN">
+	<Properties>
+		<Property name="filename.prefix">logs/current/server</Property>
+		<Property name="filename.suffix">.log</Property>
+		<property name="pattern">%-5p %d [%c{1}] %X{ident}%m%n</property>
+	</Properties>
+
+	<Appenders>
+		<Console name="ConsoleAppender" target="SYSTEM_OUT">
+			<PatternLayout pattern="${pattern}" />
+		</Console>
+		<RollingFile name="FileAppender" immediateFlush="false"
+			fileName="${filename.prefix}${filename.suffix}" filePattern="${filename.prefix}.%d{yyyy-MM-dd}.%i${filename.suffix}">
+			<PatternLayout pattern="${pattern}" />
+			<Policies>
+				<TimeBasedTriggeringPolicy />
+				<SizeBasedTriggeringPolicy size="20 MB" />
+			</Policies>
+			<DefaultRolloverStrategy max="10" />
+		</RollingFile>
+		<Async name="FileAppender.async">
+			<AppenderRef ref="FileAppender" />
+		</Async>
+		<RollingFile name="FileAppender.FixExecutionLogger"
+			immediateFlush="false"
+			fileName="${filename.prefix}-FixExecutionLogger${filename.suffix}"
+			filePattern="${filename.prefix}-FixExecutionLogger.%d{yyyy-MM-dd}.%i${filename.suffix}">
+			<PatternLayout pattern="%m%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy />
+				<SizeBasedTriggeringPolicy size="20 MB" />
+			</Policies>
+			<DefaultRolloverStrategy max="10" />
+		</RollingFile>
+		<Async name="FileAppender.FixExecutionLogger.async">
+			<AppenderRef ref="FileAppender.FixExecutionLogger" />
+		</Async>
+		<RollingFile name="FileAppender.FixMarketLogger"
+			immediateFlush="false" fileName="${filename.prefix}-FixMarketLogger${filename.suffix}"
+			filePattern="${filename.prefix}-FileAppender.FixMarketLogger.%d{yyyy-MM-dd}.%i${filename.suffix}">
+			<PatternLayout pattern="%m%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy />
+				<SizeBasedTriggeringPolicy size="20 MB" />
+			</Policies>
+			<DefaultRolloverStrategy max="10" />
+		</RollingFile>
+		<Async name="FileAppender.FixMarketLogger.async">
+			<AppenderRef ref="FileAppender.FixMarketLogger" />
+		</Async>
+		<RollingFile name="FileAppender.FixEventLogger"
+			immediateFlush="false" fileName="${filename.prefix}-FixEventLogger${filename.suffix}"
+			filePattern="${filename.prefix}-FileAppender.FixEventLogger.%d{yyyy-MM-dd}.%i${filename.suffix}">
+			<PatternLayout pattern="${pattern}" />
+			<Policies>
+				<TimeBasedTriggeringPolicy />
+				<SizeBasedTriggeringPolicy size="20 MB" />
+			</Policies>
+			<DefaultRolloverStrategy max="10" />
+		</RollingFile>
+		<Async name="FileAppender.FixEventLogger.async">
+			<AppenderRef ref="FileAppender.FixEventLogger" />
+		</Async>
+	</Appenders>
+	<Loggers>
+		<Logger name="FixEventLogger" level="debug" additivity="false"
+			includeLocation="true">
+			<AppenderRef ref="FileAppender.FixEventLogger.async" />
+		</Logger>
+		<Logger name="FixExecutionLogger" level="debug" additivity="false"
+			includeLocation="true">
+			<AppenderRef ref="FileAppender.FixExecutionLogger.async" />
+		</Logger>
+		<Logger name="FixMarketLogger" level="debug" additivity="false"
+			includeLocation="true">
+			<AppenderRef ref="FileAppender.FixMarketLogger.async" />
+		</Logger>
+		<Logger name="com.tts" level="debug" additivity="false"
+			includeLocation="true">
+			<AppenderRef ref="FileAppender.async" />
+		</Logger>
+		<Root level="warn" includeLocation="false">
+			<AppenderRef ref="ConsoleAppender" />
+		</Root>
+	</Loggers>
+</Configuration>

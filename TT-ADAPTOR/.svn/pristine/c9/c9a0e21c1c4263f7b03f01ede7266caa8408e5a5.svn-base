@@ -1,0 +1,2 @@
+adapter.fix.config=env-resources/simulator/fix.engine_tradAirUatSim.cfg
+fix.symbol.separator=

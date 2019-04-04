@@ -1,0 +1,31 @@
+package com.tts.mde.support.impl;
+
+import java.util.List;
+
+import com.tts.mde.vo.ISessionInfo;
+
+public class SessionInfoVo implements ISessionInfo {
+
+	private volatile long tradingSessionId = -1L;
+	private List<String> currencyPairWithInternalLqy = null;
+
+	@Override
+	public long getTradingSessionId() {
+		return tradingSessionId;
+	}
+
+	public void setTradingSessionId(long tradingSessionId) {
+		this.tradingSessionId = tradingSessionId;
+	}
+
+	public List<String> getCurrencyPairWithInternalLqy() {
+		return currencyPairWithInternalLqy;
+	}
+
+	public void setCurrencyPairWithInternalLqy(List<String> currencyPairWithInternalLqy) {
+		this.currencyPairWithInternalLqy = currencyPairWithInternalLqy;
+	}
+	
+	
+	
+}

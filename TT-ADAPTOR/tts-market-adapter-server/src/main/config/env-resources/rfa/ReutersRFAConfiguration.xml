@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<!DOCTYPE preferences SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+
+<preferences EXTERNAL_XML_VERSION="1.0">
+  <root type="user">
+    <map/>
+    <node name="com">
+      <map/>
+      <node name="reuters">
+        <map/>
+        <node name="rfa">
+          <map/>
+          <node name="YKB">
+            <map/>
+            <node name="Connections">
+              <map/>             
+              <node name="ykbConnection">
+                <map>
+                  <entry key="connectionType" value="RSSL"/>
+                  <!--entry key="serverList" value="193.254.228.25"/-->
+				  <entry key="serverList" value="192.168.182.30"/>
+                  <entry key="portNumber" value="14002"/>
+                </map>
+              </node>
+            </node>
+            <node name="Sessions">
+              <map/>
+              <node name="ykbSession">
+                <map>
+                  <entry key="connectionList" value="YKB::ykbConnection"/>
+                </map>
+              </node>
+            </node>
+          </node>
+        </node>
+      </node>
+    </node>
+  </root>
+</preferences>

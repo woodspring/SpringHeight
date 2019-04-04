@@ -1,0 +1,23 @@
+#SIMULATOR
+#adapter.fix.config.1=env-resources/adapter/fix.engine_YkbTradairSIMULATOR-STREAMING.cfg
+#adapter.fix.config.2=env-resources/adapter/fix.engine_YkbTradairSIMULATOR-TRADING.cfg
+
+#TradAir UAT
+adapter.fix.config.1=env-resources/adapter/fix.engine_YkbTradairUAT-STREAMING.cfg
+adapter.fix.config.2=env-resources/adapter/fix.engine_YkbTradairUAT-TRADING.cfg
+
+fix.username=TTradingApi
+fix.password=TTradingApi123
+fix.symbol.separator=
+
+
+# Properties for Reuters Implementation - Begin
+# *********************************************
+
+tr.rfa.config.file=ReutersRFAConfiguration.xml
+tr.rfa.session.name=YKBFX::ykbSession
+tr.rfa.session.user=rdc_whitelabel_test
+tr.rfa.service.provider=IDN_RDF
+tr.rfa.dictionary.file=ReutersRDMFieldDictionary.dic
+tr.rfa.enum.file=ReutersEnumType.def
+tr.rfa.max.price.interval=30

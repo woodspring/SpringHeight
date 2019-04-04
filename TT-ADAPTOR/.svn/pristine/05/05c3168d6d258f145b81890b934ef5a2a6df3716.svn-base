@@ -1,0 +1,112 @@
+#central_bank,currency_cd,tenor_cd,bid_interest_rate,ask_interest_rate
+Albania,ALL,1Y,6.25,6.25
+Algeria,DZD,1Y,4,4
+Angola,AOA,1Y,19.57,19.57
+Armenia,AMD,1Y,7,7
+Aruba,AWG,1Y,5,5
+Australia,AUD,1Y,2.5,2.5
+Azerbaijan,AZN,1Y,8,8
+Bahamas,BSD,1Y,4.5,4.5
+Bangladesh,BDT,1Y,3,3
+Barbados,BBD,1Y,12,12
+Belarus,BYR,1Y,10,10
+Belize,BZD,1Y,12,12
+Botswana,BWP,1Y,14.5,14.5
+Brazil,BRL,1Y,7.5,7.5
+Bulgaria,BGN,1Y,0.03,0.03
+Burma,MMK,1Y,12,12
+Burundi,BND,1Y,10.12,10.12
+Cambodia,KHR,1Y,5.25,5.25
+Canada,CAD,1Y,0.75,0.75
+Cape Verde,CVE,1Y,8.5,8.5
+Central African States,XAF,1Y,3.25,3.25
+Chile,CLP,1Y,5,5
+China,CNY,1Y,6,6
+Colombia,COP,1Y,9.5,9.5
+Comoros,KMF,1Y,5.36,5.36
+Costa Rica,CRC,1Y,17,17
+Croatia,HRK,1Y,9,9
+Czech Republic,CZK,1Y,0.05,0.05
+Democratic Republic of the Congo,CDF,1Y,5.25,5.25
+Denmark,DKK,1Y,0,0
+Eastern Caribbean Central Bank,XCD,1Y,6.5,6.5
+Egypt,EGP,1Y,9,9
+Fiji,FJD,1Y,9.25,9.25
+Gambia,GMD,1Y,10,10
+Georgia,GEL,1Y,8,8
+Ghana,GHS,1Y,13.5,13.5
+Guinea,GNF,1Y,22.25,22.25
+Hong Kong,HKD,1Y,0.75,0.75
+Hungary,HUF,1Y,2.3,2.3
+Iceland,ISK,1Y,15,15
+India,INR,1Y,7.5,7.5
+Indonesia,IDR,1Y,5.75,5.75
+Iran,IRR,1Y,12.5,12.5
+Iraq,IQD,1Y,15,15
+Israel,ILS,1Y,0.25,0.25
+Japan,JPY,1Y,0.1,0.1
+Jordan,JOD,1Y,6.25,6.25
+Kazakhstan,KZT,1Y,11,11
+Kuwait,KWD,1Y,6.25,6.25
+Laos,LAK,1Y,12.67,12.67
+Latvia,LAK,1Y,6,6
+Lebanon,LBP,1Y,12,12
+Lesotho,LSL,1Y,12.82,12.82
+Libya,LYD,1Y,4,4
+Lithuania,LTL,1Y,0.2,0.2
+European Central Bank,EUR,1Y,0.15,0.15
+GBP,GBP,1Y,0.15,0.15
+Malawi,MWK,1Y,15,15
+Maldives,MVR,1Y,13,13
+Mexico,MXN,1Y,4,4
+Mongolia,MNT,1Y,9.75,9.75
+Morocco,MAD,1Y,3,3
+Mozambique,MZN,1Y,9.95,9.95
+Namibia,NAD,1Y,10.5,10.5
+Nepal,NPR,1Y,6.5,6.5
+New Zealand,NZD,1Y,2.5,2.5
+Nigeria,NGN,1Y,9.5,9.5
+Norway,NOK,1Y,1.5,1.5
+Oman,OMR,1Y,0,0
+Pakistan,PKR,1Y,10,10
+Papua New Guinea,PGK,1Y,7.38,7.38
+Paraguay,PYG,1Y,20,20
+Peru,PEN,1Y,6.5,6.5
+Philippines,PHP,1Y,3.5,3.5
+Poland,PLN,1Y,2.5,2.5
+Russia,RUB,1Y,8,8
+Rwanda,RWF,1Y,12.5,12.5
+Sao Tome and Principe,STD,1Y,28,28
+Saudi Arabia,SAR,1Y,2,2
+Serbia,RSD,1Y,9.57,9.57
+Seychelles,SCR,1Y,5.13,5.13
+South Africa,ZAR,1Y,5,5
+South Korea,KRW,1Y,2.75,2.75
+Sri Lanka,LKR,1Y,11.75,11.75
+Swaziland,SZL,1Y,11,11
+Sweden,SEK,1Y,1,1
+Switzerland,CHF,1Y,0.25,0.25
+Taiwan,TWD,1Y,1.5,1.5
+Tajikistan,TJS,1Y,13.5,13.5
+Tanzania,TZS,1Y,16.4,16.4
+Thailand,THB,1Y,2.75,2.75
+Trinidad and Tobago,TTD,1Y,6.94,6.94
+Turkey,TRY,1Y,8.25,8.25
+Uganda,UGX,1Y,14.68,14.68
+Ukraine,UAH,1Y,8,8
+United Kingdom,GBP,1Y,0.5,0.5
+United States,USD,1Y,0.25,0.25
+Uruguay,UYU,1Y,10,10
+Vanuatu,VUV,1Y,6,6
+Venezuela,VEF,1Y,28.5,28.5
+Vietnam,VND,1Y,6.5,6.5
+West African States,CVE,1Y,2.75,2.75
+West African States,GHS,1Y,2.75,2.75
+West African States,GMD,1Y,2.75,2.75
+West African States,GNF,1Y,2.75,2.75
+West African States,LRD,1Y,2.75,2.75
+West African States,NGN,1Y,2.75,2.75
+West African States,SHP,1Y,2.75,2.75
+West African States,SLL,1Y,2.75,2.75
+West African States,XOF,1Y,2.75,2.75
+Zambia,ZMK,1Y,11.73,11.73

@@ -1,0 +1,19 @@
+<configuration>
+		
+	<section name="fix">
+	<!-- 
+		<entry key="initiator.config.file.1" value="env-resources/adapter/localhost-STREAMING.cfg" />
+		<entry key="initiator.config.file.2" value="env-resources/adapter/localhost-TRADING.cfg" />
+ 		<entry key="noOfFixInitiatorConfigFile" value="2" />
+ 	-->
+		<entry key="acceptor.config.file" value="env-resources/simulator/fix.engine_tradairTakerSim.cfg" />
+ 		
+	<!-- 
+		<entry key="fix.username" value="TTradingApi" />
+		<entry key="fix.password" value="TTradingApi123" />
+	-->
+	</section>
+	
+
+	
+</configuration>

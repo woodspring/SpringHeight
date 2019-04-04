@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>com.tts</groupId>
+		<artifactId>TT-COMMON</artifactId>
+		<version>5.15.2-SNAPSHOT</version>
+	</parent>
+
+	<artifactId>TT-ADAPTER</artifactId>
+	<packaging>pom</packaging>
+
+	<modules>
+		<module>tts-simulated-market-control-center-client-api</module>
+		<module>tts-mas-plugin-application-api</module>
+		<module>mas-plugins</module>
+		<module>fix-tools</module>
+		<module>mas-aggregate-model</module>
+		<module>tts-reuters-adapter</module>
+		<module>tts-market-adapter-server</module>
+		<!--<module>tts-fixapi-acceptor</module>-->
+	</modules>
+
+	<properties>
+	</properties>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>com.tts</groupId>
+				<artifactId>TT-COMMON</artifactId>
+				<version>${project.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<dependencies>
+	</dependencies>
+	
+	<build>
+		<pluginManagement>
+		</pluginManagement>
+
+		<plugins>
+		</plugins>
+	</build>
+
+	<repositories>
+		<repository>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+			<id>releases</id>
+			<name>libs-release</name>
+			<url>http://192.168.11.115:8081/artifactory/libs-release</url>
+		</repository>
+		<repository>
+			<snapshots />
+			<id>snapshots</id>
+			<name>libs-snapshot</name>
+			<url>http://192.168.11.115:8081/artifactory/libs-snapshot</url>
+		</repository>
+	</repositories>
+
+	<pluginRepositories>
+		<pluginRepository>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+			<id>releases</id>
+			<name>libs-release</name>
+			<url>http://192.168.11.115:8081/artifactory/libs-release</url>
+		</pluginRepository>
+		<pluginRepository>
+			<snapshots />
+			<id>snapshots</id>
+			<name>libs-snapshot</name>
+			<url>http://192.168.11.115:8081/artifactory/libs-snapshot</url>
+		</pluginRepository>
+	</pluginRepositories>
+
+	<distributionManagement>
+		<repository>
+			<id>releases</id>
+			<name>TickTrade Internal Releases Repository</name>
+			<url>http://192.168.11.115:8081/artifactory/libs-release-local</url>
+		</repository>
+		<snapshotRepository>
+			<id>snapshots</id>
+			<name>TickTrade Internal Snapshots Repository</name>
+			<url>http://192.168.11.115:8081/artifactory/libs-snapshot-local</url>
+		</snapshotRepository>
+
+		<site>
+			<id>TT-ADAPTER</id>
+			<name>TickTrade TT-ADAPTER Project Website</name>
+			<url>scp://192.168.11.131/projects/adapter</url>
+		</site>
+	</distributionManagement>
+
+	<scm>
+		<developerConnection>scm:svn:http://192.168.11.131/TickTradeSvn/TT-ADAPTER/branches/dev</developerConnection>
+	</scm>
+</project>

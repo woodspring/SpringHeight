@@ -1,0 +1,183 @@
+<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xs:simpleType name="SubscriptionType" final="restriction" >
+	    <xs:restriction base="xs:string">
+	        <xs:enumeration value="ESP" />
+	        <xs:enumeration value="RFS" />
+	        <xs:enumeration value="NON_FIX___CUSTOM" />
+	    </xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="MarketDataType" final="restriction" >
+	    <xs:restriction base="xs:string">
+	        <xs:enumeration value="SPOT" />
+	        <xs:enumeration value="FORWARD_POINTS" />
+	        <xs:enumeration value="VOLATILITY" />
+	        <xs:enumeration value="INTEREST_RATE" />
+	    </xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="OrderingCapability" final="restriction" >
+	    <xs:restriction base="xs:string">
+	        <xs:enumeration value="PREVIOUSLY_QUOTED__IOC" />
+	        <xs:enumeration value="PREVIOUSLY_QUOTED__FOK" />
+	        <xs:enumeration value="LIMIT__IOC" />
+	        <xs:enumeration value="LIMIT__FOK" />
+	        <xs:enumeration value="MARKET" />
+	        <xs:enumeration value="GTD" />
+	        <xs:enumeration value="GTC" />
+	    </xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="Property">
+		<xs:attribute type="xs:string" name="key" use="required" />
+		<xs:attribute type="xs:string" name="value" use="required" />
+    </xs:complexType>
+    <xs:complexType name="Properties">
+	    <xs:sequence>
+			<xs:element name="property" type="Property" minOccurs="0" maxOccurs="unbounded" />
+	    </xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="MarketDataTypes">
+	    <xs:sequence>
+			<xs:element name="marketDataType" type="MarketDataType" minOccurs="0" maxOccurs="4" />
+	    </xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="OrderTypeConfig">
+	    <xs:sequence>
+			<xs:element name="ordTypeNm" type="OrderingCapability" minOccurs="1" maxOccurs="1"  />
+			<xs:element name="tradingAccts" minOccurs="0" maxOccurs="1" >
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="tradingAcctNm" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+	    </xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="SubscriptionTypes">
+	    <xs:sequence>
+			<xs:element name="subscriptionType" type="SubscriptionType" minOccurs="1" maxOccurs="6"  />
+	    </xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="OrderConfig">
+	    <xs:sequence>
+			<xs:element name="orderTypeConfig" type="OrderTypeConfig" minOccurs="1" maxOccurs="6"  />
+	    </xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="Product">
+	    <xs:sequence>
+			<xs:element name="productNm" type="xs:string" minOccurs="1" maxOccurs="1" />
+			<xs:element name="subscriptionTypes" type="SubscriptionTypes" minOccurs="1" maxOccurs="1" />		
+			<xs:element name="orderConfig" type="OrderConfig" minOccurs="1" maxOccurs="1" />	
+	    </xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="Rungs">
+	    <xs:sequence>
+			<xs:element name="rung" type="xs:long" minOccurs="0" maxOccurs="unbounded" />
+	    </xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="Products">
+	    <xs:sequence>
+			<xs:element name="product" type="Product" minOccurs="0" maxOccurs="unbounded" />
+	    </xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="Adapter">
+		<xs:sequence>
+			<xs:element name="adapterNm" type="xs:string"/>
+			<xs:element name="isEmbedded" type="xs:boolean" minOccurs="0"/>
+			<xs:element name="sourceConfig"  minOccurs="1" maxOccurs="unbounded">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="sourceNm" type="xs:string" minOccurs="1" maxOccurs="1" />
+						<xs:element name="LPAcctNmInTTS" type="xs:string" minOccurs="1" maxOccurs="1" />
+						<xs:element name="products" type="Products" minOccurs="0" maxOccurs="1" />
+						<xs:element name="marketDataTypes" type="MarketDataTypes" minOccurs="0" maxOccurs="1" />
+						<xs:element name="defaultMdValidIntervalInMilli" type="xs:long"/>
+						<xs:element name="defaultRetryIntervalInMilli" type="xs:long"/>
+						<xs:element name="defaultRungs" type="Rungs" minOccurs="0" maxOccurs="1" />
+						<xs:element name="defaultArtificialRungs" type="Rungs" minOccurs="0" maxOccurs="1" />
+						<xs:element name="sourceProperties" type="Properties" minOccurs="0" maxOccurs="1" />						
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="adapterProperties" type="Properties" minOccurs="0" maxOccurs="1" />						
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="Adapters">
+	    <xs:sequence>
+			<xs:element name="adapter" type="Adapter" minOccurs="0" maxOccurs="unbounded" />
+	    </xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="TradingSessions">
+	    <xs:sequence>
+			<xs:element name="tradingSession" type="xs:string" minOccurs="1" maxOccurs="unbounded" />
+	    </xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="MDSubscription">
+		<xs:sequence>
+			<xs:element name="sourceNm" type="xs:string" minOccurs="1" maxOccurs="unbounded" />
+			<xs:element name="type" type="SubscriptionType" minOccurs="1" maxOccurs="1" />
+			<xs:element name="ovrdQuoteValidIntervalInMilli" type="xs:long"  minOccurs="0" />
+			<xs:element name="ovrdRetryIntervalInMilli" type="xs:long"  minOccurs="0" />
+			<xs:element name="ovrdRungs" type="Rungs" minOccurs="0" maxOccurs="1" />
+			<xs:element name="ovrdArtificialRungs" type="Rungs" minOccurs="0" maxOccurs="1" />
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="MDSubscriptions">
+	    <xs:sequence>
+			<xs:element name="subscription" type="MDSubscription" minOccurs="1" maxOccurs="unbounded" />
+	    </xs:sequence>
+	</xs:complexType>
+    <xs:complexType name="SpotMarketDataConfig">
+      <xs:sequence>
+		<xs:element name="currencyPairAggConfig" minOccurs="0" maxOccurs="unbounded">
+			<xs:complexType>
+				<xs:sequence>
+					<xs:element name="currencyPair" type="xs:string" minOccurs="1" maxOccurs="1"/>
+					<xs:element name="subscriptions" type="MDSubscriptions" minOccurs="1" maxOccurs="1" />
+					<xs:element name="lastLookSize" type="xs:int" minOccurs="1" maxOccurs="1"/>
+					<xs:element name="outboundAlgo" type="xs:string" minOccurs="1" maxOccurs="1"/>			
+					<xs:element name="outboundLiquidityRungs" type="Rungs" minOccurs="1" maxOccurs="1"/>
+					<xs:element name="outboundProperties" type="Properties" minOccurs="1" maxOccurs="1"/>
+				</xs:sequence>
+			</xs:complexType>
+		</xs:element>
+      </xs:sequence>
+    </xs:complexType> 
+    <xs:complexType name="FwdPtsMarketDataConfig">
+      <xs:sequence>
+		<xs:element name="currencyPairConfig" minOccurs="0" maxOccurs="unbounded">
+			<xs:complexType>
+				<xs:sequence>
+					<xs:element name="currencyPair" type="xs:string"  minOccurs="1" maxOccurs="1" />
+					<xs:element name="subscriptions" type="MDSubscriptions" minOccurs="1" maxOccurs="1" />
+					<xs:element name="lastLookSize" type="xs:int" minOccurs="1" maxOccurs="1"/>
+					<xs:element name="outboundAlgo" type="xs:string" minOccurs="1" maxOccurs="1"/>			
+					<xs:element name="outboundLiquidityRungs" type="Rungs" minOccurs="0" maxOccurs="1"/>
+					<xs:element name="outboundProperties" type="Properties" minOccurs="1" maxOccurs="1"/>
+				</xs:sequence>
+			</xs:complexType>
+		</xs:element>
+      </xs:sequence>
+    </xs:complexType> 
+	<xs:complexType name="MarketDataSet">
+		<xs:sequence>
+			<xs:element name="marketDataSetNm" type="xs:string" minOccurs="1" maxOccurs="1" />
+			<xs:element name="adapters" type="Adapters" minOccurs="1" maxOccurs="1" />
+			<xs:element name="spotMarketDataConfig" type="SpotMarketDataConfig" minOccurs="1" maxOccurs="1" />
+			<xs:element name="fwdptsMarketDataConfig" type="FwdPtsMarketDataConfig" minOccurs="1" maxOccurs="1" />
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="MarketDataSetSchedule">
+		<xs:sequence>
+			<xs:element name="marketDataSetNm" type="xs:string" minOccurs="1" maxOccurs="1" />
+			<xs:element name="tradingSession" type="TradingSessions" minOccurs="1" maxOccurs="1" />
+		</xs:sequence>
+	</xs:complexType>
+    <xs:element name="marketDataSetConfig"  >
+		<xs:complexType>
+		    <xs:sequence>
+				<xs:element name="marketDataSets" type="MarketDataSet" minOccurs="1" maxOccurs="unbounded" />
+				<xs:element name="marketDataSetSchedules" type="MarketDataSetSchedule" minOccurs="1" maxOccurs="unbounded" />
+		    </xs:sequence>
+		</xs:complexType>
+	</xs:element>
+</xs:schema> 

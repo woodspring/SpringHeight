@@ -1,0 +1,31 @@
+<configuration>
+
+	<section name="log">
+		<entry key="config.file" value="/log-resources/log4j-dev.xml" />
+	</section>
+	
+	<section name="data">
+		<entry key="market.file" value="/app-resources/market.data.6.txt" />
+		<entry key="random.file" value="/app-resources/random.seed.data.txt" />
+	</section>
+	
+	<section name="app">
+		<entry key="config.file" value="env-resources/simulator/spring/app.config.xml" />
+		
+		<entry key="cache.md" value="true" />
+		<entry key="cache.cr" value="true" />
+		<entry key="protocol" value="socket" />
+		
+		<!-- valid values: random, default -->
+		<entry key="simulator.type" value="random" />
+		
+		<!-- millisecond -->
+		<entry key="market.inject.interval" value="500" />
+		<entry key="market.inject.constant" value="false" />
+	</section>
+	
+	<section name="monitor">
+		<entry key="latency.report" value="report/simulator/latency.report.csv" />
+	</section>
+	
+</configuration>

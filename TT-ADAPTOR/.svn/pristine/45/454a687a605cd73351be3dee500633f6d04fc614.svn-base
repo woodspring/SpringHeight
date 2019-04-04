@@ -1,0 +1,678 @@
+package com.tts.mde.spot;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.protobuf.Message;
+import com.google.protobuf.TextFormat;
+import com.tts.mde.provider.IMDProviderStateListener;
+import com.tts.mde.provider.MDProviderStateManager;
+import com.tts.mde.spot.DelaySubscriptionSender.SubscriptionContextVo;
+import com.tts.mde.spot.vo.OutLiquidityVo;
+import com.tts.mde.spot.vo.RawLiquidityVo;
+import com.tts.mde.support.IFxCalendarBizServiceApi;
+import com.tts.mde.support.IInstrumentDetailProvider;
+import com.tts.mde.support.IMarketDataHandler;
+import com.tts.mde.support.IPublishingEndpoint;
+import com.tts.mde.support.config.Adapter.SourceConfig;
+import com.tts.mde.support.config.SpotMarketDataConfig.CurrencyPairAggConfig;
+import com.tts.mde.vo.ISessionInfo;
+import com.tts.mde.vo.SubscriptionWithSourceVo;
+import com.tts.message.TtMessageStruct.TtMsg;
+import com.tts.message.eas.request.SubscriptionStruct.PriceSubscriptionRequest;
+import com.tts.message.market.FullBookStruct.FullBook;
+import com.tts.message.market.FullBookStruct.Tick;
+import com.tts.message.market.MarketStruct.RawLiquidityEntry;
+import com.tts.message.market.MarketStruct.RawMarketBook;
+import com.tts.message.trade.PostTradeMessage.ExecutionReportInfo;
+import com.tts.message.trade.TradeMessage.Transaction;
+import com.tts.message.util.TtMsgEncoder;
+import com.tts.protocol.platform.IMsgSender;
+import com.tts.util.collection.formatter.DoubleFormatter;
+import com.tts.util.constant.TradeConstants;
+import com.tts.util.flag.IndicativeFlag;
+import com.tts.vo.TenorVo;
+
+public class SpotMarketDataHandler implements IMarketDataHandler, IMDProviderStateListener {
+
+	private static final int DEFAULT_RUNG_LEVEL = 20;
+	private final static Logger logger = LoggerFactory.getLogger(SpotMarketDataHandler.class);
+
+	private final int instrumentPrecision;
+	private final long tradingSessionId;
+	private final String symbol;
+	private final IMsgSender ctrlMsgSender;
+	private final IFxCalendarBizServiceApi fxCalendarBizService;
+	private final CurrencyPairAggConfig cfg;
+	private final Map<String, Integer> adapterSourceMap; // < [adapter.source],
+															// Index >
+	private final long[] artificialMinRung = new long[2];
+	private final long[] artificialMaxRung = new long[2];
+	
+	private final ConcurrentHashMap<String, String> reqIdMap = new ConcurrentHashMap<>(); // <
+																							// [adapter.source],
+																							// reqId
+																							// >
+	private final ConcurrentHashMap<String, Long> adapterSourceLastMarketDataTimestamp = new ConcurrentHashMap<>(); // <
+																													// [adapter.source],
+																													// timestamp
+																													// >
+	private final ConcurrentHashMap<String, Long> adapterSourceLastSubscribeTimestamp = new ConcurrentHashMap<>(); // <
+																													// [adapter.source],
+																												// timestamp
+																													// >
+	
+	
+	private final Map<String, Long> sourceMdValidPeriod;
+	private final Map<String, Long> sourceMdRetryInterval;
+
+	private final List<SubscriptionWithSourceVo> adapterSources;
+	private final RawLiquidityVo[][] bidLiquidityPool = new RawLiquidityVo[2][];
+	private final RawLiquidityVo[][] askLiquidityPool = new RawLiquidityVo[2][];
+	private final OutLiquidityVo[] outLqyStorage = new OutLiquidityVo[20];
+	private final GlobalReqIdProvider globalReqIdProvider;
+	private final DelaySubscriptionSender delaySubscriptionSender;
+	private final MDProviderStateManager mdProviderStateManager;
+
+	private int publishCounter = 0;
+
+	public SpotMarketDataHandler(CurrencyPairAggConfig cfg, List<SubscriptionWithSourceVo> sources, IMsgSender ctrlMsgSender,
+			IFxCalendarBizServiceApi fxCalendarBizService, IInstrumentDetailProvider instrumentDetailProvider,
+			ISessionInfo sessionInfo, GlobalReqIdProvider globalReqIdProvider, DelaySubscriptionSender delaySubscriptionSender, 
+			MDProviderStateManager mdProviderStateManager) {
+		for (int i = 0; i < 2; i++) {
+			this.bidLiquidityPool[i] = new RawLiquidityVo[DEFAULT_RUNG_LEVEL];
+			this.askLiquidityPool[i] = new RawLiquidityVo[DEFAULT_RUNG_LEVEL];
+			for (int j = 0; j < DEFAULT_RUNG_LEVEL; j++) {
+				this.bidLiquidityPool[i][j] = new RawLiquidityVo();
+				this.askLiquidityPool[i][j] = new RawLiquidityVo();
+			}
+		}
+
+		for (int i = 0; i < outLqyStorage.length; i++) {
+			this.outLqyStorage[i] = new OutLiquidityVo();
+		}
+
+		HashMap<String, Integer> _adapterSourceMap = new HashMap<>(1);
+		HashMap<String, Long> _mdValidIntervalMap = new HashMap<>(1);
+		HashMap<String, Long> _mdRetryIntervalMap = new HashMap<>(1);
+
+		int i = 0 ;
+		for ( SubscriptionWithSourceVo source: sources) {
+			int index = i++;
+			_adapterSourceMap.put(toString(source), index);
+			if ( source.getSourceConfigs().get(0).getDefaultArtificialRungs() != null) {
+				List<Long> rungs = source.getSourceConfigs().get(0).getDefaultArtificialRungs().getRung();
+				this.artificialMinRung[index] = rungs.size() > 1 ?  rungs.get(0) : -1L;
+				this.artificialMaxRung[index] = rungs.size() >= 2 ? rungs.get(1) : -1L;
+			}
+			else {
+				this.artificialMinRung[index] = -1L;
+				this.artificialMaxRung[index] = -1L;			
+			}
+			
+			_mdValidIntervalMap.put(toString(source), source.getSourceConfigs().get(0).getDefaultMdValidIntervalInMilli());
+			_mdRetryIntervalMap.put(toString(source), source.getSourceConfigs().get(0).getDefaultRetryIntervalInMilli());
+
+			if ( source.getMdSubscription().getOvrdRetryIntervalInMilli() != null ) {
+				_mdRetryIntervalMap.put(toString(source),  source.getMdSubscription().getOvrdRetryIntervalInMilli());
+			}
+			if ( source.getMdSubscription().getOvrdQuoteValidIntervalInMilli() != null ) {
+				_mdRetryIntervalMap.put(toString(source),  source.getMdSubscription().getOvrdQuoteValidIntervalInMilli());
+			}
+			mdProviderStateManager.registerListener(source.getAdapter().getAdapterNm(), source.getSourceConfigs().get(0).getSourceNm(), CONSTANT_SESSIONTYPE_ESP, this);
+
+		}
+		this.sourceMdRetryInterval = Collections.unmodifiableMap(_mdRetryIntervalMap);
+		this.sourceMdValidPeriod = Collections.unmodifiableMap(_mdValidIntervalMap);
+		this.adapterSourceMap = Collections.unmodifiableMap(_adapterSourceMap);
+		this.adapterSources = sources;
+		this.cfg = cfg;
+		this.ctrlMsgSender = ctrlMsgSender;
+		this.fxCalendarBizService = fxCalendarBizService;
+		this.symbol = cfg.getCurrencyPair();
+		this.instrumentPrecision = instrumentDetailProvider.getInstrumentDetail(symbol).getPrecision();
+		this.tradingSessionId = sessionInfo.getTradingSessionId();
+		this.globalReqIdProvider = globalReqIdProvider;
+		this.delaySubscriptionSender = delaySubscriptionSender;
+		this.mdProviderStateManager = mdProviderStateManager;
+		
+		
+	}
+
+	public void init() {
+		
+	}
+
+	public void destroy() {		
+		for ( SubscriptionWithSourceVo source: this.adapterSources) {
+			mdProviderStateManager.unregisterListener(source.getAdapter().getAdapterNm(), source.getSourceConfigs().get(0).getSourceNm(), CONSTANT_SESSIONTYPE_ESP, this);
+		}
+
+		unsubscribeMarketData(null, null, null);
+	}
+
+	public void validate() {
+		for (SubscriptionWithSourceVo pCfg : this.adapterSources) {
+			long lastReceivedTime = -1L;
+			String adapterSourceIdentifier = toString(pCfg);
+			int index = adapterSourceMap.get(adapterSourceIdentifier);
+			int bidQuoteCount = 0;
+			int askQuoteCount = 0;
+
+			SourceConfig sourceConfig = pCfg.getSourceConfigs().get(0);
+			for (int i = 0; i < bidLiquidityPool[index].length; i++) {
+				if (bidLiquidityPool[index][i].isValid()) {
+					long receivedTime = bidLiquidityPool[index][i].getReceivedTime();
+					long marketDataAge = System.currentTimeMillis() - receivedTime;
+					if (marketDataAge > this.sourceMdValidPeriod.get(adapterSourceIdentifier)) {
+						bidLiquidityPool[index][i].flagInvalid();
+					} else {
+						bidQuoteCount++;
+					}
+					if (receivedTime > lastReceivedTime) {
+						lastReceivedTime = receivedTime;
+					}
+				}
+			}
+			for (int i = 0; i < askLiquidityPool[index].length; i++) {
+				if (askLiquidityPool[index][i].isValid()) {
+					long receivedTime = askLiquidityPool[index][i].getReceivedTime();
+					long marketDataAge = System.currentTimeMillis() - receivedTime;
+					if (marketDataAge > this.sourceMdValidPeriod.get(adapterSourceIdentifier)) {
+						askLiquidityPool[index][i].flagInvalid();
+					} else {
+						askQuoteCount++;
+					}
+					if (receivedTime > lastReceivedTime) {
+						lastReceivedTime = receivedTime;
+					}
+				}
+			}
+			
+			Long lastDataReceivedTimeLong = adapterSourceLastMarketDataTimestamp.get(adapterSourceIdentifier);
+			long lastDataReceivedTime = lastDataReceivedTimeLong == null ? -1L : lastDataReceivedTimeLong.longValue();
+
+			long currentTime = System.currentTimeMillis();
+			long age = currentTime - lastDataReceivedTime;
+
+			if ((publishCounter % 300) == 0) {
+				logger.info(String.format("%s: MarketDataAge from %s = %s", symbol, adapterSourceIdentifier,
+						age));
+			}
+			long defaultRetryIntervalInMilli = this.sourceMdRetryInterval.get(adapterSourceIdentifier);
+
+				if (age > defaultRetryIntervalInMilli &&  bidQuoteCount == 0 && askQuoteCount == 0) {
+					Long _lastSubscribeTime = adapterSourceLastSubscribeTimestamp.get(adapterSourceIdentifier);
+					long lastSubscribeTime = _lastSubscribeTime != null? _lastSubscribeTime.longValue() : -1;
+					if (this.mdProviderStateManager.isStatusEnabled(pCfg.getAdapter().getAdapterNm(), pCfg.getSourceConfigs().get(0).getSourceNm(), CONSTANT_SESSIONTYPE_ESP) 
+							&&  defaultRetryIntervalInMilli > 0L
+							&& (currentTime - lastSubscribeTime) > defaultRetryIntervalInMilli) {
+						logger.info(String.format("%s: NO MARKET DATA from %s. RETRYING with unsub & sub ", symbol,
+								adapterSourceIdentifier));
+	
+						String reqId = reqIdMap.get(adapterSourceIdentifier);
+						if (reqId != null) {
+							unsubscribeMarketData(pCfg.getAdapter().getAdapterNm(), sourceConfig.getSourceNm(), reqId);
+						}
+						subscribeMarketData(pCfg.getAdapter().getAdapterNm(), sourceConfig.getSourceNm(), 5);
+					}
+				}
+			
+
+		}
+	}
+
+	public void onMarketData(Message message) {
+		RawMarketBook mb = (RawMarketBook) message;
+		String adapter = mb.getAdapter().toUpperCase();
+
+		updateLiquidityPrice(true, adapter, mb.getRequestId(), mb.getQuoteId(), mb.getUpdateTimeStamp(),
+				mb.getBidQuoteList(), mb.getAskQuoteList());
+		
+		String adapterSourceIdentifier = adapter + "." + adapter;
+
+		adapterSourceLastMarketDataTimestamp.put(adapterSourceIdentifier, mb.getUpdateTimeStamp());
+
+	}
+
+	private void updateLiquidityPrice(boolean replaceAllOfTheSameProviderSource, String adapter, String reqId,
+			String bookQuoteId, long bookReceiveTimestamp, List<RawLiquidityEntry> bidQuoteList,
+			List<RawLiquidityEntry> askQuoteList) {
+		HashMap<String, String> cancelMap = new HashMap<>(0);
+		if (replaceAllOfTheSameProviderSource) {
+			int bidWritePos = 0;
+			int askWritePos = 0;
+			long quoteRungSize = -1;
+			int index = -1;
+			String quoteId = null, liquidityProviderIdentifier = null;
+			RawLiquidityEntry bidQ = null, askQ = null;
+
+			boolean invalidQuote = false;
+			for (int i = 0; !invalidQuote && i < bidQuoteList.size(); i++) {
+				bidQ = bidQuoteList.get(i);
+
+				quoteRungSize = bidQ.getSize();
+				liquidityProviderIdentifier = adapter + ".";
+				if (bidQ.hasSource()) {
+					liquidityProviderIdentifier = liquidityProviderIdentifier + bidQ.getSource().toUpperCase();
+				} else {
+					liquidityProviderIdentifier = liquidityProviderIdentifier + adapter;
+				}
+				if (!reqId.equals(reqIdMap.get(liquidityProviderIdentifier))) {
+					if (bidQ.hasSource()) {
+						cancelMap.put(bidQ.getSource(), reqId);
+					} else {
+						cancelMap.put(adapter, reqId);
+					}
+					invalidQuote = true;
+				} else {
+					index = adapterSourceMap.get(liquidityProviderIdentifier);
+					quoteId = bidQ.getQuoteId();
+					if (quoteId == null || quoteId.isEmpty()) {
+						quoteId = bookQuoteId;
+					}
+					if ( i ==0 && artificialMinRung[index] > 0 && quoteRungSize > artificialMinRung[index]) {
+						bidLiquidityPool[index][bidWritePos++].update( artificialMinRung[index], bidQ.getRate(), quoteId,
+								bidQ.hasUpdateTimeStamp() ? bidQ.getUpdateTimeStamp() : bookReceiveTimestamp,
+								liquidityProviderIdentifier);	
+					}
+					bidLiquidityPool[index][bidWritePos++].update(quoteRungSize, bidQ.getRate(), quoteId,
+							bidQ.hasUpdateTimeStamp() ? bidQ.getUpdateTimeStamp() : bookReceiveTimestamp,
+							liquidityProviderIdentifier);
+				}
+			}
+			if ( !invalidQuote && index >= 0 && bidQ != null && quoteRungSize < artificialMaxRung[index]) {
+				bidLiquidityPool[index][bidWritePos++].update(artificialMaxRung[index], bidQ.getRate(), quoteId,
+						bidQ.hasUpdateTimeStamp() ? bidQ.getUpdateTimeStamp() : bookReceiveTimestamp,
+						liquidityProviderIdentifier);
+			}
+			if ( index >= 0 && bidWritePos >=0 ) {
+				bidLiquidityPool[index][bidWritePos].flagInvalid();
+			}
+			for (int i = 0; !invalidQuote && i < askQuoteList.size(); i++) {
+				askQ = askQuoteList.get(i);
+				quoteRungSize = askQ.getSize();
+
+				liquidityProviderIdentifier = adapter + ".";
+				if (askQ.hasSource()) {
+					liquidityProviderIdentifier = liquidityProviderIdentifier + askQ.getSource();
+				} else {
+					liquidityProviderIdentifier = liquidityProviderIdentifier + adapter;
+				}
+				if (!reqId.equals(reqIdMap.get(liquidityProviderIdentifier))) {
+					if (askQ.hasSource()) {
+						cancelMap.put(askQ.getSource(), reqId);
+					} else {
+						cancelMap.put(adapter, reqId);
+					}
+				} else {
+					index = adapterSourceMap.get(liquidityProviderIdentifier);
+					quoteId = askQ.getQuoteId();
+					if (quoteId == null || quoteId.isEmpty()) {
+						quoteId = bookQuoteId;
+					}
+					if ( i ==0 && artificialMinRung[index] > 0 && quoteRungSize > artificialMinRung[index]) {
+						askLiquidityPool[index][askWritePos++].update( artificialMinRung[index], askQ.getRate(), quoteId,
+								askQ.hasUpdateTimeStamp() ? askQ.getUpdateTimeStamp() : bookReceiveTimestamp,
+								liquidityProviderIdentifier);	
+					}
+					askLiquidityPool[index][askWritePos++].update(askQ.getSize(), askQ.getRate(), quoteId,
+							askQ.hasUpdateTimeStamp() ? askQ.getUpdateTimeStamp() : bookReceiveTimestamp,
+							liquidityProviderIdentifier);
+				}
+			}
+			if ( !invalidQuote && index >= 0 && askQ != null && quoteRungSize < artificialMaxRung[index]) {
+				askLiquidityPool[index][askWritePos++].update(artificialMaxRung[index], askQ.getRate(), quoteId,
+						askQ.hasUpdateTimeStamp() ? askQ.getUpdateTimeStamp() : bookReceiveTimestamp,
+						liquidityProviderIdentifier);
+			}
+			if (index >= 0 &&  askWritePos >=0 ) {
+				askLiquidityPool[index][askWritePos].flagInvalid();
+			}
+		}
+		if (cancelMap.size() > 0) {
+			for (Entry<String, String> e : cancelMap.entrySet()) {
+				unsubscribeMarketData(adapter, e.getKey(), e.getValue());
+			}
+		}
+	}
+
+	public void atPublish(long masGlobalSeq, IPublishingEndpoint publishingEndpoint) {
+		publishCounter++;
+		FullBook.Builder fbBuilder = FullBook.newBuilder();
+		fbBuilder.setSymbol(symbol);
+		validate();
+		RawLiquidityVo[][] out = sortData();
+		postProcess(out);
+		updateFb(fbBuilder, out[0], out[1]);
+
+		int storageIdx = (int) (masGlobalSeq % outLqyStorage.length);
+		outLqyStorage[storageIdx].setOutBLqy(out[0], out[1]);
+
+		fbBuilder.setTradeDate(fxCalendarBizService.getCurrentBusinessDay(symbol));
+		fbBuilder.setTradingSession(tradingSessionId);
+		fbBuilder.setTopOfBookIdx(0);
+		fbBuilder.setSpotValueDate(fxCalendarBizService.getForwardValueDate(symbol, TenorVo.NOTATION_SPOT));
+
+		// TODO review
+		fbBuilder.setRateChangeInd(3);
+
+
+		fbBuilder.setSequence(masGlobalSeq);
+		fbBuilder.getLatencyBuilder().setFaSendTimestamp(System.currentTimeMillis());
+		FullBook.Builder fb = FullBook.newBuilder(fbBuilder.build());
+		publishingEndpoint.publish("TTS.MD.FX.MR.SPOT." + symbol, fb.build());
+	}
+
+	private void postProcess(RawLiquidityVo[][] out) {
+
+	}
+
+	public void onHedgingRequest(Transaction transactionMessage) {
+		long seq = transactionMessage.getSequence();
+		int storageIdx = (int) (seq % outLqyStorage.length);
+		boolean isBuy = TradeConstants.TradeAction.BUY.equals(transactionMessage.getTradeAction());
+		RawLiquidityVo[] outLqy = isBuy ? outLqyStorage[storageIdx].getOutAskLqy()
+				: outLqyStorage[storageIdx].getOutBidLqy();
+		boolean execOnTerm = transactionMessage.getSymbol().indexOf(transactionMessage.getNotionalCurrency()) > 2;
+        boolean found = false;
+		String notionalAmtStr = execOnTerm ? transactionMessage.getNearDateDetail().getCurrency2Amt()
+				: transactionMessage.getNearDateDetail().getCurrency1Amt();
+
+		for (int i = 0; i < outLqy.length; i++) {
+
+			BigDecimal ccy1RequestSize = new BigDecimal(notionalAmtStr);
+			if (outLqy[i] == null || outLqy[i].getRate() < 0d || outLqy[i].getSize() < 0) {
+				continue;
+			}
+			if (execOnTerm) {
+				ccy1RequestSize = new BigDecimal(notionalAmtStr).divide(BigDecimal.valueOf(outLqy[i].getRate()), 2,
+						RoundingMode.HALF_UP);
+			}
+			if (outLqy[i].getSize() >= ccy1RequestSize.longValue()) {
+				found = true;
+				String liquidityProviderIdentifier = outLqy[i].getLiquidityProviderIdentifier();
+				String quoteId = outLqy[i].getQuoteId();
+				Transaction.Builder orderWithMarketBuilder = transactionMessage.toBuilder();
+				orderWithMarketBuilder.getOrderParamsBuilder().setQuoteRefId(quoteId);
+				Transaction orderWithMarket = orderWithMarketBuilder.build();
+				TtMsg ttMsg = TtMsgEncoder.encode(orderWithMarket);
+				ctrlMsgSender.send("TTS.TRAN.FX.MR.TRANINFO.FA." + liquidityProviderIdentifier.toUpperCase(), ttMsg);
+				break;
+			}
+		}
+		if ( !found ) {
+			logger.info("No Liquidity available for hedging deal, transaction: " + TextFormat.shortDebugString(transactionMessage));
+		}
+	}
+
+	public void onHedgingResponse(ExecutionReportInfo executionReportInfo) {
+
+	}
+
+	private RawLiquidityVo[][] sortData() {
+		RawLiquidityVo[] tBidLiquidity = Arrays.copyOf(bidLiquidityPool[0], DEFAULT_RUNG_LEVEL);
+		RawLiquidityVo[] iBidLiquidity = Arrays.copyOf(bidLiquidityPool[1], DEFAULT_RUNG_LEVEL);
+		RawLiquidityVo[] tAskLiquidity = Arrays.copyOf(askLiquidityPool[0], DEFAULT_RUNG_LEVEL);
+		RawLiquidityVo[] iAskLiquidity = Arrays.copyOf(askLiquidityPool[1], DEFAULT_RUNG_LEVEL);
+
+		long[] outLqyRungs = findOutLqyRungs(tBidLiquidity);
+		RawLiquidityVo[] outBidLqy = new RawLiquidityVo[tBidLiquidity.length];
+		RawLiquidityVo[] outAskLqy = new RawLiquidityVo[tBidLiquidity.length];
+		
+		if (outLqyRungs.length > 0) {
+			int tBidIdx = 0, iBidIdx = 0, tAskIdx = 0, iAskIdx = 0;
+			int outIdx = 0;
+			boolean noTBidLqy = false, noIBidLqy = false;
+			boolean noTAskLqy = false, noIAskLqy = false;
+			for ( long size : outLqyRungs) {
+				RawLiquidityVo comparableTBid = null;
+				RawLiquidityVo comparableIBid = null;
+				RawLiquidityVo comparableTAsk = null;
+				RawLiquidityVo comparableIAsk = null;
+				while ( tBidIdx < tBidLiquidity.length && !noTBidLqy) {
+					if ( tBidLiquidity[tBidIdx].isValid() ) {
+						if (tBidLiquidity[tBidIdx].getSize() >= size ) {
+							comparableTBid = tBidLiquidity[tBidIdx];
+							break;
+						} else {
+							tBidIdx++;
+						}
+					} else {
+						noTBidLqy = true;
+					}
+					
+				}
+				while ( iBidIdx < iBidLiquidity.length  && !noIBidLqy) {
+					if ( iBidLiquidity[iBidIdx].isValid() ) {
+						if (iBidLiquidity[iBidIdx].getSize() >= size ) {
+							comparableIBid = iBidLiquidity[iBidIdx];
+							break;
+						} else {
+							iBidIdx++;
+						}
+					} else {
+						noIBidLqy = true;
+					}
+				}	
+				while ( tAskIdx < tAskLiquidity.length && !noTAskLqy) {
+					if ( tAskLiquidity[tAskIdx].isValid() ) {
+						if (tAskLiquidity[tAskIdx].getSize() >= size ) {
+							comparableTAsk = tAskLiquidity[tAskIdx];
+							break;
+						} else {
+							tAskIdx++;
+						}
+					} else {
+						noTAskLqy = true;
+					}
+					
+				}
+				while ( iAskIdx < iAskLiquidity.length  && !noIAskLqy) {
+					if ( iAskLiquidity[iAskIdx].isValid() ) {
+						if (iAskLiquidity[iAskIdx].getSize() >= size ) {
+							comparableIAsk = iAskLiquidity[iAskIdx];
+							break;
+						} else {
+							iAskIdx++;
+						}
+					} else {
+						noIAskLqy = true;
+					}
+					
+				}	
+				if ( comparableTBid != null && comparableIBid != null ) {
+					if ( comparableIBid.getSize() != size) {
+						outBidLqy[outIdx] = comparableIBid.deepClone();
+						outBidLqy[outIdx].setSize(size);
+					} else {
+						outBidLqy[outIdx] = comparableIBid;
+					}
+				} else {
+					outBidLqy[outIdx] = comparableTBid;
+				}
+				if ( comparableTAsk != null && comparableIAsk != null ) {
+					if ( comparableIAsk.getSize() != size) {
+						outAskLqy[outIdx] = comparableIAsk.deepClone();
+						outAskLqy[outIdx].setSize(size);
+					} else {
+						outAskLqy[outIdx] = comparableIAsk;
+					}
+				} else {
+					outAskLqy[outIdx] = comparableTAsk;
+				}
+				outIdx++;
+			}
+		}
+		return new RawLiquidityVo[][] { outBidLqy, outAskLqy };
+	}
+
+	private static long[] findOutLqyRungs(RawLiquidityVo[] rawLiquidities) {
+		int numberOfRungs = 0;
+		long[] l = new long[DEFAULT_RUNG_LEVEL];
+		for ( int i = 0; i <  rawLiquidities.length ; i++) {
+			RawLiquidityVo rung = rawLiquidities[i];
+			if ( rung != null && rung.isValid() ) {
+				l[numberOfRungs++] = rung.getSize();
+			}
+		}
+		return Arrays.copyOf(l, numberOfRungs);
+	}
+
+	public void updateFb(FullBook.Builder fbBuilder, RawLiquidityVo[] outBidLqy, RawLiquidityVo[] outAskLqy) {
+		String quoteId = null;
+
+		for (int i = 0; i < outBidLqy.length; i++) {
+			if (outBidLqy[i] != null && outBidLqy[i].isValid()) {
+				String rate = DoubleFormatter.convertToString(outBidLqy[i].getRate(), instrumentPrecision,
+						RoundingMode.DOWN);
+				fbBuilder.addBidTicks(Tick.newBuilder().setLevel(i + 1).setRate(rate).setSpotRate(rate)
+						.setSize(outBidLqy[i].getSize()));
+			} else {
+				break;
+			}
+		}
+		for (int i = 0; i < outAskLqy.length; i++) {
+			if (outAskLqy[i] != null && outAskLqy[i].isValid()) {
+				String rate = DoubleFormatter.convertToString(outAskLqy[i].getRate(), instrumentPrecision,
+						RoundingMode.UP);
+				fbBuilder.addAskTicks(Tick.newBuilder().setLevel(i + 1).setRate(rate).setSpotRate(rate)
+						.setSize(outAskLqy[i].getSize()));
+			} else {
+				break;
+			}
+		}
+
+		if (outBidLqy.length > 0 && outAskLqy.length > 0) {
+			if (outBidLqy[0] != null) {
+				quoteId = outBidLqy[0].getQuoteId();
+			}
+			if (quoteId == null && outAskLqy[0] != null) {
+				quoteId = outAskLqy[0].getQuoteId();
+			}
+			fbBuilder.setIndicativeFlag(IndicativeFlag.TRADABLE);
+			fbBuilder.setIndicativeSubFlag(IndicativeFlag.TRADABLE);
+		} else {
+			fbBuilder.setIndicativeFlag(IndicativeFlag.setIndicative(IndicativeFlag.TRADABLE, IndicativeFlag.IndicativeReason.MA_NoData));
+			fbBuilder.setIndicativeSubFlag(0);
+		}
+		if (quoteId != null) {
+			fbBuilder.setQuoteRefId(quoteId);
+		}
+	}
+
+	private void subscribeMarketData(String adapter, String source, int delayInSeconds) {
+		String currencyPair = this.symbol;
+		String reqId = globalReqIdProvider.getReqId();
+
+		for (SubscriptionWithSourceVo pCfg : this.adapterSources) {
+			String adapterNm = pCfg.getAdapter().getAdapterNm();
+			if (adapter == null || adapterNm.equals(adapter)) {
+				String sourceNm = pCfg.getSourceConfigs().get(0).getSourceNm();
+				String adapterSourceIdentifer = adapterNm + "." + sourceNm;
+				if (source == null || sourceNm.equals(source)) {
+					PriceSubscriptionRequest.Builder subReqB = PriceSubscriptionRequest.newBuilder();
+					subReqB.getQuoteParamBuilder().setCurrencyPair(currencyPair);
+					subReqB.setRequestId(reqId);
+					String replyTopic = "TTS.MD.FX.FX.SPOT." + currencyPair + "." + adapterSourceIdentifer;
+					subReqB.setTopic(replyTopic.toUpperCase());
+					PriceSubscriptionRequest subReq = subReqB.build();
+					TtMsg ttMsg = TtMsgEncoder.encode(subReq);
+					logger.info(String.format("Subscribing %s from %s.%s, requestId=%s", symbol, adapterNm, sourceNm,
+							reqId));
+
+					String outboundTopic = "TTS.CTRL.EVENT.REQUEST.FA.SUBSCRIBE." + adapterSourceIdentifer + "."
+							+ currencyPair;
+					//ctrlMsgSender.send(outboundTopic.toUpperCase(), ttMsg);
+					this.delaySubscriptionSender.sendSubscription(new SubscriptionContextVo(outboundTopic, ctrlMsgSender, ttMsg), delayInSeconds);
+					reqIdMap.put(adapterSourceIdentifer, reqId);
+					adapterSourceLastSubscribeTimestamp.put(adapterSourceIdentifer, System.currentTimeMillis());
+				}
+
+			}
+		}
+	}
+
+	private void unsubscribeMarketData(String adapter, String source, String requestId) {
+		String currencyPair = cfg.getCurrencyPair();
+
+		if (adapter == null && source == null) {
+
+			for (SubscriptionWithSourceVo pCfg : this.adapterSources) {
+				String adapterNm = pCfg.getAdapter().getAdapterNm();
+				String sourceNm = pCfg.getSourceConfigs().get(0).getSourceNm();
+				String reqId = requestId == null ? reqIdMap.get(adapterNm + "." + sourceNm) : requestId;
+				if (reqId != null) {
+					PriceSubscriptionRequest.Builder subReqB = PriceSubscriptionRequest.newBuilder();
+					subReqB.getQuoteParamBuilder().setCurrencyPair(currencyPair);
+					subReqB.setRequestId(reqId);
+
+					PriceSubscriptionRequest subReq = subReqB.build();
+					TtMsg ttMsg = TtMsgEncoder.encode(subReq);
+					logger.info(String.format("Unsubscribing %s from %s.%s, requestId=%s", symbol, adapterNm, sourceNm,
+							reqId));
+					String adapterSourceIdentifer = adapterNm + "." + sourceNm;
+					String outboundTopic = "TTS.CTRL.EVENT.REQUEST.FA.UNSUBSCRIBE."
+							+ adapterSourceIdentifer.toUpperCase() + "." + currencyPair;
+					ctrlMsgSender.send(outboundTopic.toUpperCase(), ttMsg);
+				}
+
+			}
+		} else {
+			String reqId = requestId == null ? reqIdMap.get(adapter + "." + source) : requestId;
+
+			PriceSubscriptionRequest.Builder subReqB = PriceSubscriptionRequest.newBuilder();
+			subReqB.getQuoteParamBuilder().setCurrencyPair(currencyPair);
+			subReqB.setRequestId(reqId);
+
+			PriceSubscriptionRequest subReq = subReqB.build();
+			TtMsg ttMsg = TtMsgEncoder.encode(subReq);
+			String adapterSourceIdentifer = adapter + "." + source;
+
+			logger.info(String.format("Unsubscribing %s from %s, requestId=%s", symbol, adapterSourceIdentifer, reqId));
+
+			String outboundTopic = "TTS.CTRL.EVENT.REQUEST.FA.UNSUBSCRIBE." + adapterSourceIdentifer.toUpperCase() + "."
+					+ currencyPair;
+			ctrlMsgSender.send(outboundTopic.toUpperCase(), ttMsg);
+		}
+	}
+
+	private static final String toString(SubscriptionWithSourceVo source) {
+		return source.getAdapter().getAdapterNm() + "." + source.getSourceConfigs().get(0).getSourceNm();
+	}
+
+	@Override
+	public void doWhenOnline(String adapterNm, String sourceNm) {
+		subscribeMarketData(adapterNm, sourceNm, 0);		
+	}
+
+	@Override
+	public void doWhenOffline(String adapterNm, String sourceNm) {
+		String liquidityProviderIdentifier =  adapterNm + "." + sourceNm;
+		int index = adapterSourceMap.get(liquidityProviderIdentifier);
+
+		for ( int bidWritePos = 0; bidWritePos < bidLiquidityPool[index].length; bidWritePos++) {
+			if ( index >= 0 && bidWritePos >=0 ) {
+				bidLiquidityPool[index][bidWritePos].flagInvalid();
+			}
+		}
+		for ( int askWritePos = 0; askWritePos < askLiquidityPool[index].length; askWritePos++) {
+			if ( index >= 0 && askWritePos >=0 ) {
+				askLiquidityPool[index][askWritePos].flagInvalid();
+			}
+		}
+		reqIdMap.remove(liquidityProviderIdentifier);
+		adapterSourceLastSubscribeTimestamp.remove(liquidityProviderIdentifier);
+	}
+}

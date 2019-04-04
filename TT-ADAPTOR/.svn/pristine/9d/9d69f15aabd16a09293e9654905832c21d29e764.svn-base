@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+<xs:element name="spotSessionConfig">
+  <xs:complexType>
+    <xs:sequence>
+		<xs:element name="currencyPairAggConfig" minOccurs="0" maxOccurs="320">
+			<xs:complexType>
+				<xs:sequence>
+					<xs:element name="currencyPair" type="xs:string"/>
+					<xs:element name="adapterConfig" minOccurs="1" maxOccurs="15">
+						<xs:complexType>
+							<xs:sequence>
+								<xs:element name="adapterNm" type="xs:string"/>
+								<xs:element name="sourceConfig"  minOccurs="1" maxOccurs="10">
+									<xs:complexType>
+										<xs:sequence>
+											<xs:element name="sourceNm" type="xs:string" minOccurs="1" maxOccurs="1" />
+											<xs:element name="liquidityProviderNm" type="xs:string" minOccurs="0" maxOccurs="1" />
+											<xs:element name="counterpartyNm" type="xs:string" minOccurs="0" maxOccurs="1" />
+											<xs:element name="acctNm" type="xs:string" minOccurs="0" maxOccurs="1" />
+											<xs:element name="quoteValidIntervalInMilli" type="xs:long"/>
+											<xs:element name="retryIntervalInMilli" type="xs:long"/>
+											<xs:element name="rungs" type="xs:long" minOccurs="0" maxOccurs="20" />
+											<xs:element name="artificialRungs" type="xs:long" minOccurs="0" maxOccurs="20" />
+										</xs:sequence>
+									</xs:complexType>
+								</xs:element>
+							</xs:sequence>
+						</xs:complexType>
+					</xs:element>
+					<xs:element name="stdOutLiquidityRungs" type="xs:long" minOccurs="1" maxOccurs="20"/>
+				</xs:sequence>
+			</xs:complexType>
+		</xs:element>
+    </xs:sequence>
+  </xs:complexType> 
+</xs:element>
+</xs:schema> 

@@ -1,0 +1,20 @@
+package com.tts.mde.spot;
+
+import java.util.concurrent.atomic.AtomicLong;
+
+import com.tts.util.AppUtils;
+
+public class GlobalReqIdProvider {
+	private final AtomicLong reqId;
+	
+	public GlobalReqIdProvider() {
+		long prefix = AppUtils.getSequencePrefix();
+		reqId = new AtomicLong(prefix + AppUtils.getNumOfRestart() * 10000000000000L);
+		
+	}
+
+	public String getReqId() {
+		long id = reqId.incrementAndGet();
+		return Long.toString( id );
+	}
+}

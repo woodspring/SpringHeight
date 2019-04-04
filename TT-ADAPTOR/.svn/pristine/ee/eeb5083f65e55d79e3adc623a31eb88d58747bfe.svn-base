@@ -1,0 +1,463 @@
+package com.tts.mde;
+
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
+import javax.xml.bind.PropertyException;
+
+import com.tts.mde.support.config.Adapter;
+import com.tts.mde.support.config.Adapter.SourceConfig;
+import com.tts.mde.support.config.Adapters;
+import com.tts.mde.support.config.FwdPtsMarketDataConfig;
+import com.tts.mde.support.config.FwdPtsMarketDataConfig.CurrencyPairConfig;
+import com.tts.mde.support.config.MDSubscription;
+import com.tts.mde.support.config.MDSubscriptions;
+import com.tts.mde.support.config.MarketDataSet;
+import com.tts.mde.support.config.MarketDataSetConfig;
+import com.tts.mde.support.config.MarketDataSetSchedule;
+import com.tts.mde.support.config.MarketDataType;
+import com.tts.mde.support.config.MarketDataTypes;
+import com.tts.mde.support.config.OrderConfig;
+import com.tts.mde.support.config.OrderTypeConfig;
+import com.tts.mde.support.config.OrderingCapability;
+import com.tts.mde.support.config.Product;
+import com.tts.mde.support.config.Products;
+import com.tts.mde.support.config.Rungs;
+import com.tts.mde.support.config.SpotMarketDataConfig;
+import com.tts.mde.support.config.SpotMarketDataConfig.CurrencyPairAggConfig;
+import com.tts.mde.support.config.SubscriptionType;
+import com.tts.mde.support.config.SubscriptionTypes;
+import com.tts.mde.support.config.TradingSessions;
+
+
+public class XmlBuilderV3 {
+	public static final String[] SYMBOL_TTSDEMO_VWAP = new String[] {
+			"AUDCAD",
+			"AUDCHF",
+			"AUDJPY",
+			"AUDNZD",
+			"AUDUSD",
+			"CADJPY",
+			"CHFJPY",
+			"CHFNOK",
+			"EURAUD",
+			"EURCHF",
+			"EURGBP",
+			"EURJPY",
+			"EURNZD",
+			"EURTRY",
+			"EURUSD",
+			"GBPAUD",
+			"GBPCAD",
+			"GBPCHF",
+			"GBPJPY",
+			"GBPNZD",
+			"GBPTRY",
+			"GBPUSD",
+			"NZDJPY",
+			"NZDUSD",
+			"USDCHF",
+			"USDDKK",
+			"USDHKD",
+			"USDHUF",
+			"USDJPY",
+			"USDMXN",
+			"USDNOK",
+			"USDPLN",
+			"USDSEK",
+			"USDSGD",
+			"USDTRY",
+			"USDZAR",
+			"CADCHF",
+			"NZDCAD"
+	};
+	
+	public static final String[] SYMBOL_TTSDEMO_CIBC_PASS_TRHU = new String[] {
+			"EURCAD",
+			"GBPCAD",
+			"USDCAD"
+	};
+	
+	public static final String[] SYMBOLS_YKB = new String[] {
+			"AUDJPY",
+			"AUDUSD",
+			"CHFTRY",
+			"EURCAD",
+			"EURCHF",
+			"EURDKK",
+			"EURGBP",
+			"EURJPY",
+			"EURNOK",
+			"EURRUB",
+			"EURTRY",
+			"EURUSD",
+			"GBPAUD",
+			"GBPCHF",
+			"GBPJPY",
+			"GBPNOK",
+			"GBPSEK",
+			"GBPTRY",
+			"GBPUSD",
+			"NOKSEK",
+			"USDCHF",
+			"USDJPY",
+			"USDNOK",
+			"USDRUB",
+			"USDSEK",
+			"USDTRY",
+			"EURSEK",
+			"GBPDKK",
+			"USDDKK",
+			"USDCAD",
+	};
+	
+	public static final String[] SYMBOL_FC_YKB = new String[] {
+	"AUDJPY",
+	"AUDUSD",
+	"CHFTRY",
+	"EURCAD",
+	"EURCHF",
+	"EURDKK",
+	"EURGBP",
+	"EURJPY",
+	"EURNOK",
+	"EURRUB",
+	"EURTRY",
+	"EURUSD",
+	"GBPAUD",
+	"GBPCHF",
+	"GBPJPY",
+	"GBPNOK",
+	"GBPSEK",
+	"GBPTRY",
+	"GBPUSD",
+	"NOKSEK",
+	"USDCHF",
+	"USDJPY",
+	"USDNOK",
+	"USDRUB",
+	"USDSEK",
+	"USDTRY",
+	"AUDTRY",
+	"CADTRY",
+	"DKKTRY",
+	"EURSEK",
+	"GBPDKK",
+	"JPYTRY",
+	"NOKTRY",
+	"RUBTRY",
+	"SEKTRY",
+	"USDDKK",
+	"USDCAD" 
+	};
+	
+	public static void mainTTS(String[] args) throws JAXBException, FileNotFoundException {
+		Products spot_pq_products = new Products();
+		Product spot = new Product();
+		spot.setProductNm("FXSPOT");
+		OrderTypeConfig previouslyQuoteOrdType = new OrderTypeConfig();
+		previouslyQuoteOrdType.setOrdTypeNm(OrderingCapability.PREVIOUSLY_QUOTED_FOK);
+		OrderConfig ordTypes = new OrderConfig();
+		ordTypes.getOrderTypeConfig().add(previouslyQuoteOrdType);
+		spot.setOrderConfig(ordTypes);
+		spot.setSubscriptionTypes(new SubscriptionTypes());
+		spot.getSubscriptionTypes().getSubscriptionType().add(SubscriptionType.ESP);
+		spot_pq_products.getProduct().add(spot);
+		
+		
+		Products spot_limit_market_products = new Products();
+		Product spot_limit_market = new Product();
+		spot_limit_market.setProductNm("FXSPOT");
+		OrderTypeConfig limitFokOrdType = new OrderTypeConfig();
+		limitFokOrdType.setOrdTypeNm(OrderingCapability.LIMIT_FOK);
+		OrderTypeConfig mkOrdType = new OrderTypeConfig();
+		mkOrdType.setOrdTypeNm(OrderingCapability.MARKET);
+		OrderConfig ordTypesMk = new OrderConfig();
+		ordTypesMk.getOrderTypeConfig().add(limitFokOrdType);
+		ordTypesMk.getOrderTypeConfig().add(mkOrdType);
+		spot_limit_market.setOrderConfig(ordTypesMk);
+		spot_limit_market.setSubscriptionTypes(new SubscriptionTypes());
+		spot_limit_market.getSubscriptionTypes().getSubscriptionType().add(SubscriptionType.ESP);
+		spot_limit_market_products.getProduct().add(spot_limit_market);
+		
+		Rungs oneDollarRungs = new Rungs();
+		oneDollarRungs.getRung().add(1L);
+		
+		Rungs vwapRungs = new Rungs();
+		vwapRungs.getRung().add(1000000L);
+		vwapRungs.getRung().add(3000000L);
+		vwapRungs.getRung().add(5000000L);
+		vwapRungs.getRung().add(7000000L);
+		vwapRungs.getRung().add(10000000L);	
+		
+		Rungs passthroughOutRungs = new Rungs();
+		passthroughOutRungs.getRung().add(-1L);
+		
+		Adapter cibcAdapter = new Adapter();
+	    cibcAdapter.setAdapterNm("CIBC");
+
+	    SourceConfig cibcSource = new SourceConfig();
+	    cibcSource.setSourceNm("CIBC");
+	    cibcSource.setLPAcctNmInTTS("CIBC");
+	    cibcSource.setProducts(spot_pq_products);
+	    cibcSource.setDefaultMdValidIntervalInMilli(10000);
+	    cibcSource.setDefaultRetryIntervalInMilli(10000);
+	    cibcSource.setDefaultArtificialRungs(oneDollarRungs);
+	    cibcSource.setMarketDataTypes(new MarketDataTypes());
+	    cibcSource.getMarketDataTypes().getMarketDataType().add(MarketDataType.SPOT);
+	    cibcAdapter.getSourceConfig().add(cibcSource);
+	
+	    Adapter morgenStaleyAdapter = new Adapter();
+	    morgenStaleyAdapter.setAdapterNm("MS");
+	    
+	    SourceConfig morgenStaleySourceConfig = new SourceConfig();
+	    morgenStaleySourceConfig.setSourceNm("MS");
+	    morgenStaleySourceConfig.setLPAcctNmInTTS("MorgenStanley");
+	    morgenStaleySourceConfig.setProducts(spot_pq_products);
+	    morgenStaleySourceConfig.setDefaultMdValidIntervalInMilli(10000);
+	    morgenStaleySourceConfig.setDefaultRetryIntervalInMilli(10000);
+	    morgenStaleySourceConfig.setMarketDataTypes(new MarketDataTypes());
+	    morgenStaleySourceConfig.getMarketDataTypes().getMarketDataType().add(MarketDataType.SPOT);
+	    morgenStaleyAdapter.getSourceConfig().add(morgenStaleySourceConfig);
+	    
+	    Adapter swissFxAdapter = new Adapter();
+	    swissFxAdapter.setAdapterNm("SWISSFX");
+	    
+	    SourceConfig swissFxSourceConfig = new SourceConfig();
+	    swissFxSourceConfig.setSourceNm("SWISSFX");
+	    swissFxSourceConfig.setLPAcctNmInTTS("SwissFx");
+	    swissFxSourceConfig.setProducts(spot_limit_market_products);
+	    swissFxSourceConfig.setMarketDataTypes(new MarketDataTypes());
+	    swissFxSourceConfig.getMarketDataTypes().getMarketDataType().add(MarketDataType.SPOT);
+	    swissFxSourceConfig.setDefaultMdValidIntervalInMilli(10000);
+	    swissFxSourceConfig.setDefaultRetryIntervalInMilli(10000);
+	    swissFxAdapter.getSourceConfig().add(swissFxSourceConfig);
+	    
+	    MDSubscription cibcSubscription = new MDSubscription();
+	    cibcSubscription.getSourceNm().add("CIBC");
+	    cibcSubscription.setType(SubscriptionType.ESP);
+	    
+	    MDSubscription morgenStanleySubscription = new MDSubscription();
+	    morgenStanleySubscription.getSourceNm().add("MorgenStanley");
+	    morgenStanleySubscription.setType(SubscriptionType.ESP);
+	
+	    MDSubscription swissFxSubscription = new MDSubscription();
+	    swissFxSubscription.getSourceNm().add("SwissFx");
+	    swissFxSubscription.setType(SubscriptionType.ESP);
+	    
+	    MarketDataSet cfg = new MarketDataSet();
+	    cfg.setAdapters(new Adapters());
+	    cfg.setSpotMarketDataConfig(new SpotMarketDataConfig());
+	    cfg.getAdapters().getAdapter().add(cibcAdapter);
+	    cfg.getAdapters().getAdapter().add(morgenStaleyAdapter);
+	    cfg.getAdapters().getAdapter().add(swissFxAdapter);
+
+	    for ( String symbol: SYMBOL_TTSDEMO_CIBC_PASS_TRHU ) {
+		    CurrencyPairAggConfig currencyPairConfig = new CurrencyPairAggConfig();
+		    currencyPairConfig.setCurrencyPair(symbol);
+		    currencyPairConfig.setOutboundLiquidityRungs(passthroughOutRungs);
+		    currencyPairConfig.setSubscriptions(new MDSubscriptions());
+		    currencyPairConfig.getSubscriptions().getSubscription().add(cibcSubscription);
+		    currencyPairConfig.setOutboundAlgo("PASS_THRU");
+		    currencyPairConfig.setLastLookSize(8);
+		    cfg.getSpotMarketDataConfig().getCurrencyPairAggConfig().add(currencyPairConfig);
+	    }
+       
+	    for ( String symbol: SYMBOL_TTSDEMO_VWAP ) {
+			    CurrencyPairAggConfig currencyPairConfig = new CurrencyPairAggConfig();
+			    currencyPairConfig.setCurrencyPair(symbol);
+			    currencyPairConfig.setOutboundLiquidityRungs(vwapRungs);
+			    currencyPairConfig.setSubscriptions(new MDSubscriptions());
+			    currencyPairConfig.getSubscriptions().getSubscription().add(cibcSubscription);
+			    currencyPairConfig.getSubscriptions().getSubscription().add(morgenStanleySubscription);
+			    currencyPairConfig.getSubscriptions().getSubscription().add(swissFxSubscription);
+			    currencyPairConfig.setOutboundAlgo("VWAP_SAFE");
+			    currencyPairConfig.setLastLookSize(4);
+			    cfg.getSpotMarketDataConfig().getCurrencyPairAggConfig().add(currencyPairConfig);
+	    }
+	    
+	    cfg.setMarketDataSetNm("DEFAULT");
+
+	    MarketDataSetSchedule schedule = new MarketDataSetSchedule();
+	    schedule.setMarketDataSetNm("DEFAULT");
+	    TradingSessions ts = new TradingSessions();
+	    ts.getTradingSession().add("Business Hours");
+	    ts.getTradingSession().add("After Business Hours");
+	    ts.getTradingSession().add("New York");
+	    ts.getTradingSession().add("London");
+	    ts.getTradingSession().add("Tokyo");
+	    schedule.setTradingSession(ts);
+
+	    MarketDataSetConfig fs = new MarketDataSetConfig();
+	    fs.getMarketDataSets().add(cfg);
+	    fs.getMarketDataSetSchedules().add(schedule);
+	    
+	    write(fs, "cfgV3-TTS.xml");
+	}
+
+	
+	public static void main(String[] args) throws JAXBException, FileNotFoundException {
+		mainTTS(args);
+		mainYKB(args);
+	}
+	
+	
+	public static void mainFSS(String[] args) throws JAXBException, FileNotFoundException {
+		Adapter fssAdapter = new Adapter();
+		fssAdapter.setAdapterNm("FSS");
+	    
+		String[] LPs = new String[] { "BAML", "BNP", "BTMU", "CITI", "COBA", "CS", "GS", "HSBC", "JPMC", "MS", "SCB", "UBS"};
+		for (String lp : LPs) {
+		    SourceConfig sourceConfig1 = new SourceConfig();
+		    sourceConfig1.setSourceNm(lp);
+		    sourceConfig1.setDefaultMdValidIntervalInMilli(10000L);
+		    sourceConfig1.setDefaultRetryIntervalInMilli(10000);
+		    fssAdapter.getSourceConfig().add(sourceConfig1);
+		}
+
+		
+	}
+	
+	public static void mainYKB(String[] args) throws JAXBException, FileNotFoundException {
+		Products spot_limit_market_products = new Products();
+		Product spot_limit_market = new Product();
+		OrderTypeConfig limitFokOrdType = new OrderTypeConfig();
+		limitFokOrdType.setOrdTypeNm(OrderingCapability.LIMIT_FOK);
+		OrderTypeConfig limitIocOrdType = new OrderTypeConfig();
+		limitIocOrdType.setOrdTypeNm(OrderingCapability.LIMIT_IOC);
+		OrderTypeConfig mkOrdType = new OrderTypeConfig();
+		mkOrdType.setOrdTypeNm(OrderingCapability.MARKET);
+		
+		spot_limit_market.setProductNm("FXSPOT");
+		spot_limit_market.setOrderConfig(new OrderConfig());
+		spot_limit_market.getOrderConfig().getOrderTypeConfig().add(limitFokOrdType);
+		spot_limit_market.getOrderConfig().getOrderTypeConfig().add(limitIocOrdType);
+		spot_limit_market.getOrderConfig().getOrderTypeConfig().add(mkOrdType);
+		spot_limit_market.setSubscriptionTypes(new SubscriptionTypes());
+		spot_limit_market.getSubscriptionTypes().getSubscriptionType().add(SubscriptionType.ESP);
+		spot_limit_market_products.getProduct().add(spot_limit_market);
+		
+		
+		Rungs tradAirArtificialRungs = new Rungs();
+		tradAirArtificialRungs.getRung().add(500000L);
+		tradAirArtificialRungs.getRung().add(2000000L);
+
+		Rungs outRungs = new Rungs();
+		outRungs.getRung().add(-1L);
+		
+		Adapter tradAirProvider = new Adapter();
+	    tradAirProvider.setAdapterNm("TRADAIR");
+
+	    SourceConfig sourceConfig = new SourceConfig();
+	    sourceConfig.setSourceNm("TRADAIR");
+	    sourceConfig.setProducts(spot_limit_market_products);
+
+	    sourceConfig.setDefaultMdValidIntervalInMilli(60000);
+	    sourceConfig.setDefaultRetryIntervalInMilli(10000);
+	    sourceConfig.setDefaultArtificialRungs(tradAirArtificialRungs);
+	    tradAirProvider.getSourceConfig().add(sourceConfig);
+	
+	    Adapter ttsSkewProvider = new Adapter();
+	    ttsSkewProvider.setAdapterNm("INTERNAL");
+	    
+	    SourceConfig ttsSkewSourceConfig = new SourceConfig();
+	    ttsSkewSourceConfig.setSourceNm("INTERNAL");
+	    ttsSkewSourceConfig.setProducts(spot_limit_market_products);
+
+	    ttsSkewSourceConfig.setDefaultMdValidIntervalInMilli(10000);
+	    ttsSkewSourceConfig.setDefaultRetryIntervalInMilli(10000);
+	    ttsSkewProvider.getSourceConfig().add(ttsSkewSourceConfig);
+	    
+	    Adapter harmoniSwapPointsAdapter = new Adapter();
+	    harmoniSwapPointsAdapter.setAdapterNm("HARMONI_SWAP_PTS_ADAPTER");
+	    harmoniSwapPointsAdapter.setIsEmbedded(Boolean.TRUE);
+
+	    SourceConfig harmoniSwapPointsSourceConfig = new SourceConfig();
+	    harmoniSwapPointsSourceConfig.setSourceNm("YKB");
+	    harmoniSwapPointsSourceConfig.setMarketDataTypes(new MarketDataTypes());
+	    harmoniSwapPointsSourceConfig.getMarketDataTypes().getMarketDataType().add(MarketDataType.FORWARD_POINTS);
+	    harmoniSwapPointsSourceConfig.setDefaultMdValidIntervalInMilli(-1);
+	    harmoniSwapPointsSourceConfig.setDefaultRetryIntervalInMilli(30000L);
+	    harmoniSwapPointsAdapter.getSourceConfig().add(harmoniSwapPointsSourceConfig);
+	    
+	    MDSubscription tradAirSubscription = new MDSubscription();
+	    tradAirSubscription.getSourceNm().add("TRADAIR");
+	    tradAirSubscription.setType(SubscriptionType.ESP);
+	    
+	    MDSubscription internalSubscription = new MDSubscription();
+	    internalSubscription.getSourceNm().add("INTERNAL");
+	    internalSubscription.setType(SubscriptionType.ESP);
+
+	    MarketDataSet cfg = new MarketDataSet();
+	    cfg.setAdapters(new Adapters());
+	    cfg.getAdapters().getAdapter().add(tradAirProvider);
+	    cfg.getAdapters().getAdapter().add(ttsSkewProvider);
+	    cfg.getAdapters().getAdapter().add(harmoniSwapPointsAdapter);
+	    cfg.setSpotMarketDataConfig(new SpotMarketDataConfig());
+
+	    
+	    CurrencyPairAggConfig usdtryCurrencyPairConfig = new CurrencyPairAggConfig();
+	    usdtryCurrencyPairConfig.setCurrencyPair("USDTRY");
+	    usdtryCurrencyPairConfig.setSubscriptions(new MDSubscriptions());
+	    usdtryCurrencyPairConfig.getSubscriptions().getSubscription().add(tradAirSubscription);
+	    usdtryCurrencyPairConfig.getSubscriptions().getSubscription().add(internalSubscription);
+	    usdtryCurrencyPairConfig.setOutboundAlgo("BEST_PRICE");
+	    usdtryCurrencyPairConfig.setOutboundLiquidityRungs(outRungs);
+	    usdtryCurrencyPairConfig.setLastLookSize(4);
+	    
+	    
+
+	    cfg.getSpotMarketDataConfig().getCurrencyPairAggConfig().add(usdtryCurrencyPairConfig);
+	    
+	    for ( String symbol: SYMBOLS_YKB ) {
+		    if ( !"USDTRY".equals(symbol)) {
+			    CurrencyPairAggConfig currencyPairConfig = new CurrencyPairAggConfig();
+			    currencyPairConfig.setCurrencyPair(symbol);
+			    currencyPairConfig.setOutboundLiquidityRungs(outRungs);
+			    currencyPairConfig.setSubscriptions(new MDSubscriptions());
+			    currencyPairConfig.getSubscriptions().getSubscription().add(tradAirSubscription);
+			    currencyPairConfig.setOutboundAlgo("PASS_THRU");
+			    currencyPairConfig.setLastLookSize(4);
+			    cfg.getSpotMarketDataConfig().getCurrencyPairAggConfig().add(currencyPairConfig);
+		    }
+	    }
+	    
+	    cfg.setMarketDataSetNm("DEFAULT");
+	    cfg.setFwdptsMarketDataConfig(new FwdPtsMarketDataConfig());
+	    for ( String symbol : SYMBOL_FC_YKB) {
+	    	CurrencyPairConfig c = new CurrencyPairConfig();
+	    	c.setCurrencyPair(symbol);
+	    	c.setSubscriptions(new MDSubscriptions());
+	    	MDSubscription sub = new MDSubscription();
+	    	sub.setType(SubscriptionType.NON_FIX_CUSTOM);
+	    	sub.getSourceNm().add("YKB");
+	    	c.getSubscriptions().getSubscription().add(sub);
+		    cfg.getFwdptsMarketDataConfig().getCurrencyPairConfig().add(c);
+	    }
+	    
+	    
+	    
+	    MarketDataSetSchedule schedule = new MarketDataSetSchedule();
+	    schedule.setMarketDataSetNm("DEFAULT");
+	    TradingSessions ts = new TradingSessions();
+	    ts.getTradingSession().add("Business Hours");
+	    ts.getTradingSession().add("After Business Hours");
+	    schedule.setTradingSession(ts);
+	    MarketDataSetConfig fs = new MarketDataSetConfig();
+	    fs.getMarketDataSets().add(cfg);
+	    fs.getMarketDataSetSchedules().add(schedule);
+	    
+	    write(fs, "cfgV3-YKB.xml");
+	}
+
+	public static void write(MarketDataSetConfig cfg, String filename) throws JAXBException, PropertyException, FileNotFoundException {
+		JAXBContext contextObj = JAXBContext.newInstance(MarketDataSetConfig.class);  
+	    Marshaller marshallerObj = contextObj.createMarshaller();  
+	    marshallerObj.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);  
+	    marshallerObj.marshal(cfg, new FileOutputStream(filename));
+	}
+
+}

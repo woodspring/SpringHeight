@@ -1,0 +1,56 @@
+package com.tts.mde.spot;
+
+import java.util.Map;
+
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.tts.message.TtMessageStruct.TtMsg;
+import com.tts.message.market.MarketStruct.RawMarketBook;
+import com.tts.protocol.platform.IMsgListener;
+import com.tts.protocol.platform.IMsgProperties;
+import com.tts.protocol.platform.IMsgReceiver;
+import com.tts.protocol.platform.IMsgReceiverFactory;
+import com.tts.protocol.platform.IMsgSessionInfo;
+import com.tts.util.AppContext;
+
+public class SpotMarketDataReceiver implements IMsgListener {
+
+	private volatile Map<String, SpotMarketDataHandler> listenerMap;
+	private final IMsgReceiver msgReceiver;
+	
+	public SpotMarketDataReceiver() {
+		IMsgReceiverFactory msgReceiverFactory = AppContext.getContext().getBean(IMsgReceiverFactory.class);
+
+		IMsgReceiver msgReceiver = msgReceiverFactory.getMsgReceiver(true, false);
+		msgReceiver.setTopic("TTS.MD.FX.FA.SPOT.>");
+		msgReceiver.setListener(this);
+		msgReceiver.start();
+		
+		this.msgReceiver = msgReceiver;
+	}
+
+	@Override
+	public void onMessage(TtMsg msg, IMsgSessionInfo sessionInfo, IMsgProperties properties) {
+		try {
+			RawMarketBook mb = RawMarketBook.parseFrom(msg.getParameters());
+			if ( listenerMap != null ) {
+				String symbol = mb.getSymbol();
+				SpotMarketDataHandler mdHandler = listenerMap.get(symbol);
+				if ( mdHandler != null ) {
+					mdHandler.onMarketData(mb);
+				}
+			}
+		} catch (InvalidProtocolBufferException e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
+	public void setListenerMap(Map<String, SpotMarketDataHandler> m) {
+		this.listenerMap = m;
+	}
+	
+	public void destroy() {
+		msgReceiver.destroy();
+	}
+	
+}

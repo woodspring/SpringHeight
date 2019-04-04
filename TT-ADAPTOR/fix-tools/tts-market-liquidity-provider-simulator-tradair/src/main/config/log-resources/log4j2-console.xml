@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Configuration status="WARN">
+	<Properties>
+		<Property name="filename.prefix">logs/server</Property>
+		<Property name="filename.suffix">.log</Property>
+		<property name="pattern">%-5p %d{yyyyMMdd HH:mm:ss.SSS} [%c{1}:%t]
+			%X{ident}%m%n</property>
+	</Properties>
+
+	<Appenders>
+		<Console name="ConsoleAppender" target="SYSTEM_OUT">
+			<PatternLayout pattern="${pattern}" />
+		</Console>
+		<RollingFile name="FileAppender.dev" immediateFlush="false"
+			fileName="${filename.prefix}-dev${filename.suffix}" filePattern="${filename.prefix}-dev.%d{yyyy-MM-dd}.%i${filename.suffix}">
+			<PatternLayout pattern="${pattern}" />
+			<Policies>
+				<TimeBasedTriggeringPolicy />
+				<SizeBasedTriggeringPolicy size="20 MB" />
+			</Policies>
+			<DefaultRolloverStrategy max="10" />
+		</RollingFile>
+		<Async name="FileAppender.dev.async">
+			<AppenderRef ref="FileAppender.dev" />
+		</Async>
+
+		<RollingFile name="FileAppender.FixLogger" immediateFlush="false"
+			fileName="${filename.prefix}-FixLogger${filename.suffix}"
+			filePattern="${filename.prefix}-FixLogger.%d{yyyy-MM-dd}.%i${filename.suffix}">
+			<PatternLayout pattern="${pattern}" />
+			<Policies>
+				<TimeBasedTriggeringPolicy />
+				<SizeBasedTriggeringPolicy size="20 MB" />
+			</Policies>
+			<DefaultRolloverStrategy max="10" />
+		</RollingFile>
+		<Async name="FileAppender.FixLogger.async">
+			<AppenderRef ref="FileAppender.FixLogger" />
+		</Async>
+	</Appenders>
+	<Loggers>
+		<Logger name="com.tts" level="debug" additivity="false"
+			includeLocation="true">
+			<AppenderRef ref="ConsoleAppender" />
+		</Logger>
+		<Root level="info" includeLocation="false">
+			<AppenderRef ref="FileAppender.dev.async" />
+		</Root>
+	</Loggers>
+</Configuration>

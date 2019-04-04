@@ -1,0 +1,127 @@
+package com.tts.mde.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+
+import com.tts.mde.provider.MDProviderStateManager;
+import com.tts.mde.provider.SessionInfoProvider;
+import com.tts.mde.spot.DelaySubscriptionSender;
+import com.tts.mde.spot.GlobalReqIdProvider;
+import com.tts.mde.support.ICertifiedPublishingEndpoint;
+import com.tts.mde.support.IFxCalendarBizServiceApi;
+import com.tts.mde.support.IInstrumentDetailProvider;
+import com.tts.mde.support.IMasGlobolSequenceProvider;
+import com.tts.mde.support.IPublishingEndpoint;
+import com.tts.mde.support.impl.CachedFxCalendarBizService;
+import com.tts.mde.support.impl.CertifiedPublishingEndpointMessageBusImpl;
+import com.tts.mde.support.impl.InstrumentDetailProvider;
+import com.tts.mde.support.impl.MasGlobalSequenceProvider;
+import com.tts.mde.support.impl.PublishingEndpointMessageBusImpl;
+import com.tts.protocol.config.MessageConfiguration;
+import com.tts.service.biz.calendar.FxCalendarBizServiceImpl;
+import com.tts.service.biz.calendar.IFxCalendarBizService;
+import com.tts.service.biz.calendar.event.FxCalendarEventSubscriber;
+import com.tts.service.biz.instrument.util.ISymbolIdMapper;
+import com.tts.service.biz.instrument.util.SymbolIdMapper;
+import com.tts.service.biz.price.convention.PriceConventionManager;
+import com.tts.service.config.JdbcConfiguration;
+import com.tts.service.config.ServicesConfiguration;
+import com.tts.util.config.UtilConfiguration;
+
+@Configuration
+@Import({ UtilConfiguration.class, JdbcConfiguration.class, ServicesConfiguration.class, MessageConfiguration.class })
+public class MdeConfiguration {
+
+
+	/********************************************
+	 * Util
+	 ********************************************/
+	
+	 @Bean
+	 public IFxCalendarBizService fxCalendarBizService() {
+	 return new FxCalendarBizServiceImpl();
+	 }
+	
+	 @Bean
+	 public PriceConventionManager priceConventionManager() {
+	 return new PriceConventionManager();
+	 }
+	
+	 @Bean(initMethod = "init", destroyMethod = "destroy")
+	 public FxCalendarEventSubscriber fxCalendarEventSubscriber() {
+	 return new FxCalendarEventSubscriber();
+	 }
+
+	@Bean
+	public ISymbolIdMapper symbolIdMapper() {
+		return new SymbolIdMapper();
+	}
+
+	@Bean
+	public IMasGlobolSequenceProvider masGlobalSequenceProvider() {
+		return new MasGlobalSequenceProvider();
+	}
+	@Bean
+	public GlobalReqIdProvider globalReqIdProvider() {
+		return new GlobalReqIdProvider();
+	}
+	
+	@Bean( destroyMethod = "destroy")
+	public DelaySubscriptionSender delaySubscriptionSender() {
+		return new DelaySubscriptionSender();
+	}
+	
+	 @Bean(initMethod = "init", destroyMethod = "destroy")
+	 public MDProviderStateManager mdProviderStateManager() {
+	 return new MDProviderStateManager();
+	 }
+	/***************************************
+	 * configuration bean
+	 ***************************************/
+	@Bean
+	public SessionInfoProvider SessionInfoProvider() {
+		return new SessionInfoProvider();
+	}
+
+	@Bean(initMethod = "init", destroyMethod = "destroy")
+	public IPublishingEndpoint publishingEndpoint() {
+		return new PublishingEndpointMessageBusImpl();
+	}
+
+	@Bean(initMethod = "init", destroyMethod = "destroy")
+	public ICertifiedPublishingEndpoint certifiedPublishingEndpoint() {
+		return new CertifiedPublishingEndpointMessageBusImpl();
+	}
+
+	 @Bean
+	 public IFxCalendarBizServiceApi fxCalendarBizServiceApi() {
+	 return new CachedFxCalendarBizService(symbolIdMapper().getSymbols().toArray(new String[0]));
+	 }
+
+	@Bean
+	public IInstrumentDetailProvider instrumentDetailProvider() {
+		return new InstrumentDetailProvider();
+	}
+
+	/********************************************
+	 * Heartbeat
+	 ********************************************/
+
+	// @Bean(initMethod = "init", destroyMethod = "destroy")
+	// public IHeartbeatSender heartbeatSender() {
+	// HeartbeatSenderImpl hbSender = new HeartbeatSenderImpl();
+	// hbSender.setNonCertifiedHeartbeatEnabled(true);
+	// hbSender.setTaskScheduler(taskScheduler());
+	// hbSender.setTicketName("MDE");
+	//
+	// String hbInterval =
+	// RuntimeDataService.getRunTimeData(SysProperty.GroupCd.CONSTANTS,
+	// SysProperty.Key1.HEARTBEAT_INTERVAL, null);
+	// if (hbInterval != null && !hbInterval.isEmpty()) {
+	// hbSender.setIntervalInMillis(Long.valueOf(hbInterval));
+	// }
+	//
+	// return hbSender;
+	// }
+}

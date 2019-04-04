@@ -1,0 +1,24 @@
+<configuration>
+		
+	<section name="fix">
+	<!--
+		<entry key="initiator.config.file.1" value="env-resources/adapter/fix.engine_ykbpoc-STREAMING.cfg" />
+		<entry key="initiator.config.file.2" value="env-resources/adapter/fix.engine_ykbpoc-TRADING.cfg" />
+	-->
+
+		<entry key="initiator.config.file.1" value="env-resources/adapter/localhost-STREAMING.cfg" />
+		<entry key="initiator.config.file.2" value="env-resources/adapter/localhost-TRADING.cfg" />
+
+		<entry key="noOfFixInitiatorConfigFile" value="2" />
+		<entry key="fix.username" value="TTradingApi" />
+		<entry key="fix.password" value="TTradingApi123" />
+		<entry key="logout_while_change_ts" value="true" />		
+		<entry key="logon_grace_period" value="30" />		
+		<entry key="allowCancelEspDuringSession" value="true" />		
+		<entry key="autoCancelEspBeforeLogout" value="true" />		
+
+	</section>
+	
+
+	
+</configuration>

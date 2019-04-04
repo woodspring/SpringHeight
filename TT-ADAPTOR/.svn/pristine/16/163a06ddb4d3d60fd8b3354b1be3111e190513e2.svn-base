@@ -1,0 +1,20 @@
+<configuration>
+		
+	<section name="fix">
+		<entry key="initiator.config.file.1" value="env-resources/adapter/localhost.cfg" />
+		<entry key="initiator.config.file" value="env-resources/adapter/localhost.cfg" />
+
+		<entry key="noOfFixInitiatorConfigFile" value="1" />
+		<entry key="logout_while_change_ts" value="true" />		
+		<entry key="logon_grace_period" value="0" />		
+		<entry key="allowCancelEspDuringSession" value="true" />		
+		<entry key="autoCancelEspBeforeLogout" value="true" />		
+
+	</section>
+	<section name="orderingParam">
+		<entry key="OnBehaveOf" value="TICKTRADE" />
+		<entry key="AccountNm" value="DUMMY TOR" />
+	</section>
+
+	
+</configuration>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>com.tts</groupId>
+		<artifactId>TT-ADAPTER</artifactId>
+		<version>5.15.2-SNAPSHOT</version>
+	</parent>
+	<artifactId>mas-aggregate-model</artifactId>
+	<packaging>pom</packaging>
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<poi.version>3.10-FINAL</poi.version>
+	</properties>
+
+	<modules>
+		<module>mdadapter-plugins</module>
+		<module>tts-tradair-fix-adapter</module>
+		<module>tts-cibc-fix-adapter</module>
+		<module>tts-generic-fix-adapter</module>
+		<module>tts-skew-rate-engine</module>
+		<module>tts-market-rate-engine</module>
+		<module>tts-market-rate-engine-nextgen</module>
+		<module>tts-fss-fix-adapter</module>
+	</modules>
+	<dependencies>
+		<dependency>
+			<groupId>com.tibco.tibrv</groupId>
+			<artifactId>tibrvnative</artifactId>
+			<version>${tibrv.version}</version>
+			<scope>provided</scope>
+		</dependency>
+	</dependencies>
+</project>

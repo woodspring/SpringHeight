@@ -1,0 +1,66 @@
+package com.tts.mde.spot;
+
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+import com.tts.message.TtMessageStruct.TtMsg;
+import com.tts.protocol.platform.IMsgSender;
+
+public class DelaySubscriptionSender {
+	private final ScheduledExecutorService scheduledExecutorService;
+	public DelaySubscriptionSender() {
+		ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
+		this.scheduledExecutorService = service;
+	}
+	
+	public void destroy() {
+		if ( this.scheduledExecutorService != null ) {
+			this.scheduledExecutorService.shutdownNow();
+		}
+	}
+	
+	public void sendSubscription(SubscriptionContextVo context, int delayInSecond) {
+		scheduledExecutorService.schedule(new DelaySubscriptionSubmissionTask(context), delayInSecond, TimeUnit.SECONDS);
+	}
+	
+	private final class DelaySubscriptionSubmissionTask implements Runnable {
+		private final SubscriptionContextVo c;
+		
+		private DelaySubscriptionSubmissionTask(SubscriptionContextVo c) {
+			this.c = c;
+		}
+		
+		@Override
+		public void run() {
+			c.getSender().send(c.getTopic(), c.getEncodedSubscriptionMsg());
+			
+		}
+	}
+
+	public final static class SubscriptionContextVo {
+		private final String topic;
+		private final IMsgSender sender;
+		private final TtMsg encodedSubscriptionMsg;
+		
+		SubscriptionContextVo(String topic, IMsgSender sender, TtMsg encodedSubscriptionMsg) {
+			super();
+			this.topic = topic;
+			this.sender = sender;
+			this.encodedSubscriptionMsg = encodedSubscriptionMsg;
+		}
+		
+		public String getTopic() {
+			return topic;
+		}
+		public IMsgSender getSender() {
+			return sender;
+		}
+		public TtMsg getEncodedSubscriptionMsg() {
+			return encodedSubscriptionMsg;
+		}
+		
+		
+	}
+
+}

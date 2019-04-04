@@ -1,0 +1,10 @@
+[Unit]
+Description= TickTrade tts-market-adapter-server
+After=syslog.target systemd-sysctl.service network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/ticktrade/tts-market-adapter-server/bin/ctl-start.sh
+
+[Install]
+WantedBy=ticktradesystems.target

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>com.tts</groupId>
+		<artifactId>mdadapter-plugins</artifactId>
+		<version>5.15.2-SNAPSHOT</version>
+	</parent>
+
+	<artifactId>tts-mdadapter-api-nextgen</artifactId>
+	<name>tts-mdadapter-api-nextgen</name>
+
+	<properties>
+	</properties>
+
+	<dependencies>
+		<dependency>
+			<groupId>${project.groupId}</groupId>
+			<artifactId>tts-utilityservices</artifactId>
+			<version>${project.version}</version>
+			<scope>provided</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.servicemix.bundles</groupId>
+			<artifactId>org.apache.servicemix.bundles.quickfix</artifactId>
+			<version>1.6.4_1</version>
+			<scope>provided</scope>
+		</dependency>
+	</dependencies>
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>jaxb2-maven-plugin</artifactId>
+				<version>1.6</version>
+				<executions>
+					<execution>
+						<id>xjc-1-0</id>
+						<goals>
+							<goal>xjc</goal>
+						</goals>
+						<configuration>
+							<packageName>com.tts.mde.support.config</packageName>
+							<schemaDirectory>${project.basedir}/src/main/xsd</schemaDirectory>
+						</configuration>
+					</execution>
+				</executions>
+				<configuration>
+					<target>2.1</target>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+</project>

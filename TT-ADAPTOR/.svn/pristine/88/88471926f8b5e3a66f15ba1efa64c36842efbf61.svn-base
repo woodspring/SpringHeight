@@ -1,0 +1,11 @@
+[Unit]
+Description= TickTrade tts-market-simulator
+After=syslog.target systemd-sysctl.service network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/ticktrade/tts-market-liquidity-provider-simulator/bin/ctl-start.sh
+ExecStop=/opt/ticktrade/tts-market-liquidity-provider-simulator/bin/ctlstop.sh
+
+[Install]
+WantedBy=ticktradesystems.target

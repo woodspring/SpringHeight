@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration status="debug">
+
+	<properties>
+        <Property name="fileName.prefix">logs/current/fixapi</Property>
+        <Property name="fileName.suffix">.log</Property>
+		<property name="log.pattern">%d{dd-MM-yyyy HH:mm:ss,SSS} %-5p - %m%n</property>
+	</properties>
+	
+	<appenders>	
+		<Console name="Console" target="SYSTEM_OUT">
+			<PatternLayout pattern="${log.pattern}"/>
+		</Console>
+		
+		<RollingFile name="FileAppender.FixAPILogger" immediateFlush="false"
+			fileName="${fileName.prefix}-FixAPILogger${fileName.suffix}"
+			filePattern="${fileName.prefix}-FixAPILogger.%d{yyyy-MM-dd}.%i${fileName.suffix}">
+			<PatternLayout pattern="${log.pattern}" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1" modulate="true" />
+			</Policies>
+		</RollingFile>
+		<Async name="FileAppender.FixAPILogger.async">
+			<AppenderRef ref="FileAppender.FixAPILogger" />
+		</Async>    	
+	</appenders>
+	
+	<loggers>	
+		<root level="info"> 
+			<AppenderRef ref="Console" />
+		</root>
+		
+		<Logger name="FixAPILogger" level="debug" additivity="false"
+			includeLocation="true">
+			<AppenderRef ref="FileAppender.FixAPILogger.async" />
+		</Logger>		
+	</loggers>
+	
+</configuration>
